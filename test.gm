@@ -1,0 +1,13 @@
+
+
+
+fn main() [s32]
+{
+    return 0;
+}
+
+
+fn add() [s32]
+{
+    return 4;
+}
