@@ -1,4 +1,5 @@
 #include <gamma/arena/arena.h>
+#include <gamma/generator/generator.h>
 #include <gamma/lexer/lexer.h>
 #include <gamma/parser/parser.h>
 #include <stdio.h>
@@ -18,8 +19,7 @@ int main(const int argc, const char **argv)
     const gm_token_t *tokens;
     if (!gm_lex_file(&arena, argv[1], &tokens))
     {
-        gm_arena_destroy(&arena);
-        return EXIT_FAILURE;
+        goto failure;
     }
 
     puts("===== Tokens =====");
@@ -27,23 +27,36 @@ int main(const int argc, const char **argv)
     putchar('\n');
     putchar('\n');
 
-    const gm_ast_node_t *ast;
+    gm_ast_node_t *ast;
     if (!gm_parse_tokens(&arena, tokens, &ast))
     {
-        gm_arena_destroy(&arena);
-        return EXIT_FAILURE;
+        goto failure;
     }
 
     puts("===== Abstract Syntax Tree =====");
     gm_print_ast_tree(ast);
+    putchar('\n');
+    putchar('\n');
 
     if (!gm_ensure_ast_integrity(&arena, ast))
     {
-        gm_arena_destroy(&arena);
-        return EXIT_FAILURE;
+        goto failure;
     }
 
-    gm_arena_destroy(&arena);
+    if (!gm_compile_amd64_ast_tree(&arena, ast))
+    {
+        goto failure;
+    }
 
+    puts("===== AMD64 Compiled Abstract Syntax Tree =====");
+    gm_print_amd64_ast_tree(ast);
+    putchar('\n');
+    putchar('\n');
+
+    gm_arena_destroy(&arena);
     return EXIT_SUCCESS;
+
+failure:
+    gm_arena_destroy(&arena);
+    return EXIT_FAILURE;
 }
