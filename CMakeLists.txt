@@ -21,6 +21,7 @@ target_sources(gamma
         src/parser/statement.c
 
         src/generator/generator.c
+        src/generator/elf.c
 
         src/arena/arena.c
 

@@ -3,7 +3,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_t **statements, const gm_token_t **out)
+bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, const gm_statement_t **statements, const gm_token_t **out)
 {
     static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 11, "gm_parse_fn_body(): token type enum size changed");
     static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 1, "gm_parse_fn_body(): statement type enum size changed");

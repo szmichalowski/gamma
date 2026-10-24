@@ -1,0 +1,53 @@
+#ifndef GM_API_GENERATOR_ELF_H
+#define GM_API_GENERATOR_ELF_H
+
+#include <gamma/arena/arena.h>
+#include <stdint.h>
+
+typedef struct [[gnu::packed]] gm_elf64_header
+{
+    union
+    {
+        uint32_t magic32;
+        uint8_t magic8[4];
+    };
+    uint8_t architecture;
+    uint8_t endianness;
+    uint8_t version;
+    uint8_t os_abi;
+    uint8_t abi_version;
+    uint8_t padding[7];
+    uint16_t type;
+    uint16_t machine;
+    uint32_t version_second;
+    uint64_t entry;
+    uint64_t program_header_offset;
+    uint64_t section_header_offset;
+    uint32_t flags;
+    uint16_t elf_header_size;
+    uint16_t program_header_entry_size;
+    uint16_t program_header_entry_count;
+    uint16_t section_header_entry_size;
+    uint16_t section_header_entry_count;
+    uint16_t section_header_entry_index;
+} gm_elf64_header_t;
+
+static_assert(sizeof(gm_elf64_header_t) == 64, "64-bit ELF header must be 64 (0x40) bytes long");
+
+typedef enum gm_object_file_type : uint16_t
+{
+    GM_OBJECT_FILE_TYPE_UNKNOWN = 0x00,
+    GM_OBJECT_FILE_TYPE_RELOCATABLE = 0x01,
+    GM_OBJECT_FILE_TYPE_EXECUTABLE = 0x02,
+    GM_OBJECT_FILE_TYPE_SHARED_OBJECT = 0x03,
+    GM_OBJECT_FILE_TYPE_CORE = 0x04,
+
+    GM_OBJECT_FILE_TYPE_OS_LOW = 0xFE00,
+    GM_OBJECT_FILE_TYPE_OS_HIGH = 0xFEFF,
+    GM_OBJECT_FILE_TYPE_PROCESSOR_LOW = 0xFF00,
+    GM_OBJECT_FILE_TYPE_PROCESSOR_HIGH = 0xFFFF
+} gm_object_file_type_e;
+
+bool gm_amd64_generate_elf64_header(gm_arena_t *arena, const gm_object_file_type_e file_type, const gm_elf64_header_t **out);
+
+#endif // GM_API_GENERATOR_ELF_H
