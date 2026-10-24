@@ -167,29 +167,6 @@ bool gm_ensure_ast_integrity(gm_arena_t *arena, const gm_ast_node_t *ast_tree)
     return res;
 }
 
-bool gm_compile_amd64_ast_tree(gm_arena_t *arena, gm_ast_node_t *ast_tree)
-{
-    static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_compile_amd64_ast_tree(): AST node type enum size changed");
-    for (gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
-    {
-        switch (it->type)
-        {
-        case GM_AST_NODE_TYPE_FN:
-            if (!gm_amd64_generate_fn_body(arena, it->fn.statements, &it->instructions))
-            {
-                return false;
-            }
-
-            break;
-        default:
-            fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
-            return false;
-        }
-    }
-
-    return true;
-}
-
 void gm_print_ast_tree(const gm_ast_node_t *ast_tree)
 {
     if (ast_tree == nullptr)
@@ -206,31 +183,6 @@ void gm_print_ast_tree(const gm_ast_node_t *ast_tree)
         case GM_AST_NODE_TYPE_FN:
             printf("FUNCTION \"%s\" that returns \"%s\"\n", it->fn.name.data, gm_type_to_string(it->fn.return_type));
             gm_print_statements(it->fn.statements);
-            putchar('\n');
-            break;
-        default:
-            fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
-            return;
-        }
-    }
-}
-
-void gm_print_amd64_ast_tree(const gm_ast_node_t *ast_tree)
-{
-    if (ast_tree == nullptr)
-    {
-        puts("<NO AST>");
-        return;
-    }
-
-    static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_print_ast_tree(): AST node type enum size changed");
-    for (const gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
-    {
-        switch (it->type)
-        {
-        case GM_AST_NODE_TYPE_FN:
-            printf("%s:\n", it->fn.name.data);
-            gm_print_amd64_instructions(it->instructions);
             putchar('\n');
             break;
         default:

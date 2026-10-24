@@ -2,7 +2,7 @@
 #define GM_API_GENERATOR_GENERATOR_H
 
 #include <gamma/arena/arena.h>
-#include <gamma/parser/statement.h>
+#include <gamma/parser/parser.h>
 #include <stdint.h>
 
 typedef enum gm_amd64_instruction_type
@@ -43,8 +43,8 @@ struct gm_amd64_instruction
     };
 };
 
-bool gm_amd64_generate_fn_body(gm_arena_t *arena, const gm_statement_t *statements, gm_amd64_instruction_t **instructions);
+bool gm_amd64_compile_ast_tree(gm_arena_t *arena, gm_ast_node_t *ast_tree);
 
-void gm_print_amd64_instructions(const gm_amd64_instruction_t *instructions);
+void gm_amd64_print_ast_tree(const gm_ast_node_t *ast_tree);
 
 #endif // GM_API_GENERATOR_GENERATOR_H

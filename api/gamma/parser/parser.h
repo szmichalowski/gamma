@@ -1,8 +1,6 @@
 #ifndef API_PARSER_PARSER_H
 #define API_PARSER_PARSER_H
 
-#include "gamma/arena/arena.h"
-#include <gamma/generator/generator.h>
 #include <gamma/lexer/lexer.h>
 #include <gamma/parser/statement.h>
 #include <gamma/string/string.h>
@@ -29,6 +27,8 @@ typedef struct gm_ast_fn
     gm_statement_t *statements;
 } gm_ast_fn_t;
 
+typedef struct gm_amd64_instruction gm_amd64_instruction_t;
+
 typedef struct gm_ast_node gm_ast_node_t;
 struct gm_ast_node
 {
@@ -50,9 +50,6 @@ bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t 
 
 bool gm_ensure_ast_integrity(gm_arena_t *arena, const gm_ast_node_t *ast_tree);
 
-bool gm_compile_amd64_ast_tree(gm_arena_t *arena, gm_ast_node_t *ast_tree);
-
 void gm_print_ast_tree(const gm_ast_node_t *ast_tree);
-void gm_print_amd64_ast_tree(const gm_ast_node_t *ast_tree);
 
 #endif // API_PARSER_PARSER_H

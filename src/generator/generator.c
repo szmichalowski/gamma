@@ -2,7 +2,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-bool gm_amd64_generate_fn_body(gm_arena_t *arena, const gm_statement_t *statements, gm_amd64_instruction_t **instructions)
+static bool gm_amd64_generate_fn_body(gm_arena_t *arena, const gm_statement_t *statements, gm_amd64_instruction_t **instructions)
 {
     static_assert(GM_AMD64_INSTRUCTION_TYPE_GUARDIAN_ANGEL == 2, "gm_amd64_generate_fn_body(): amd64 instruction type enum size changed");
     static_assert(GM_AMD64_REGISTER_TYPE_GUARDIAN_ANGEL == 6, "gm_amd64_generate_fn_body(): amd64 register type enum size changed");
@@ -63,6 +63,29 @@ bool gm_amd64_generate_fn_body(gm_arena_t *arena, const gm_statement_t *statemen
     return true;
 }
 
+bool gm_amd64_compile_ast_tree(gm_arena_t *arena, gm_ast_node_t *ast_tree)
+{
+    static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_amd64_compile_ast_tree(): AST node type enum size changed");
+    for (gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
+    {
+        switch (it->type)
+        {
+        case GM_AST_NODE_TYPE_FN:
+            if (!gm_amd64_generate_fn_body(arena, it->fn.statements, &it->instructions))
+            {
+                return false;
+            }
+
+            break;
+        default:
+            fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
+            return false;
+        }
+    }
+
+    return true;
+}
+
 static const char *gm_amd64_register_to_string(const gm_amd64_register_type_e register_type)
 {
     static_assert(GM_AMD64_REGISTER_TYPE_GUARDIAN_ANGEL == 6, "gm_amd64_register_to_string(): AMD64 register type enum size changed");
@@ -87,7 +110,7 @@ static const char *gm_amd64_register_to_string(const gm_amd64_register_type_e re
     }
 }
 
-void gm_print_amd64_instructions(const gm_amd64_instruction_t *instructions)
+static void gm_amd64_print_instructions(const gm_amd64_instruction_t *instructions)
 {
     if (instructions == nullptr)
     {
@@ -95,7 +118,7 @@ void gm_print_amd64_instructions(const gm_amd64_instruction_t *instructions)
         return;
     }
 
-    static_assert(GM_AMD64_INSTRUCTION_TYPE_GUARDIAN_ANGEL == 2, "gm_print_amd64_instructions(): AMD64 instruction type enum size changed");
+    static_assert(GM_AMD64_INSTRUCTION_TYPE_GUARDIAN_ANGEL == 2, "gm_amd64_print_instructions(): AMD64 instruction type enum size changed");
     for (const gm_amd64_instruction_t *it = instructions; it != nullptr; it = it->next)
     {
         switch (it->type)
@@ -108,6 +131,31 @@ void gm_print_amd64_instructions(const gm_amd64_instruction_t *instructions)
             break;
         default:
             fprintf(stderr, "\tERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
+            return;
+        }
+    }
+}
+
+void gm_amd64_print_ast_tree(const gm_ast_node_t *ast_tree)
+{
+    if (ast_tree == nullptr)
+    {
+        puts("<NO AST>");
+        return;
+    }
+
+    static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_amd64_print_ast_tree(): AST node type enum size changed");
+    for (const gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
+    {
+        switch (it->type)
+        {
+        case GM_AST_NODE_TYPE_FN:
+            printf("%s:\n", it->fn.name.data);
+            gm_amd64_print_instructions(it->instructions);
+            putchar('\n');
+            break;
+        default:
+            fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
             return;
         }
     }

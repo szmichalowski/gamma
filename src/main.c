@@ -43,13 +43,13 @@ int main(const int argc, const char **argv)
         goto failure;
     }
 
-    if (!gm_compile_amd64_ast_tree(&arena, ast))
+    if (!gm_amd64_compile_ast_tree(&arena, ast))
     {
         goto failure;
     }
 
     puts("===== AMD64 Compiled Abstract Syntax Tree =====");
-    gm_print_amd64_ast_tree(ast);
+    gm_amd64_print_ast_tree(ast);
     putchar('\n');
     putchar('\n');
 
