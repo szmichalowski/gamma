@@ -32,7 +32,7 @@ struct gm_statement
 
 bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_t **statements, const gm_token_t **out);
 
-bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_statement_t *statements);
+bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const gm_statement_t *statements);
 
 void gm_print_statements(const gm_statement_t *statements);
 

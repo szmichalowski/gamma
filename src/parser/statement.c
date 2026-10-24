@@ -80,7 +80,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
     return true;
 }
 
-bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_statement_t *statements)
+bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const gm_statement_t *statements)
 {
     static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 1, "gm_print_statements(): statement type enum size changed");
 
@@ -103,6 +103,12 @@ bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_statement_t *statements)
             fprintf(stderr, "\tERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
             return false;
         }
+    }
+
+    if (!returned)
+    {
+        gm_print_syntax_error(arena, fn_token->line, fn_token->column, "the function \"%s\" has not returned", fn_token->string.data);
+        return false;
     }
 
     return true;

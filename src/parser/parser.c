@@ -186,7 +186,7 @@ bool gm_ensure_ast_integrity(gm_arena_t *arena, const gm_ast_node_t *ast_tree)
         switch (it->type)
         {
         case GM_AST_NODE_TYPE_FN:
-            const bool fn_ret = gm_ensure_fn_integrity(arena, it->fn.statements);
+            const bool fn_ret = gm_ensure_fn_integrity(arena, it->fn.token_name, it->fn.statements);
             if (!fn_ret)
             {
                 res = false;
