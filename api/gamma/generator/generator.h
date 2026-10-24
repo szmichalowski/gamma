@@ -43,7 +43,9 @@ struct gm_amd64_instruction
     };
 };
 
-bool gm_amd64_compile_ast_tree(gm_arena_t *arena, gm_ast_node_t *ast_tree);
+bool gm_amd64_virtual_compile_ast_tree(gm_arena_t *arena, gm_ast_node_t *ast_tree);
+
+bool gm_amd64_physical_compile_ast_tree(gm_arena_t *arena, gm_ast_node_t *ast_tree);
 
 void gm_amd64_print_ast_tree(const gm_ast_node_t *ast_tree);
 

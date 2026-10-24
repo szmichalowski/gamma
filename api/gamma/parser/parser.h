@@ -19,15 +19,19 @@ typedef enum gm_ast_node_type
     GM_AST_NODE_TYPE_GUARDIAN_ANGEL
 } gm_ast_node_type_e;
 
+typedef struct gm_amd64_instruction gm_amd64_instruction_t;
+
 typedef struct gm_ast_fn
 {
     gm_string_t name;
+    const gm_token_t *token_name;
     gm_type_e return_type;
 
     gm_statement_t *statements;
+    gm_amd64_instruction_t *instructions;
+    uint8_t *binary_instructions;
+    size_t binary_instructions_size;
 } gm_ast_fn_t;
-
-typedef struct gm_amd64_instruction gm_amd64_instruction_t;
 
 typedef struct gm_ast_node gm_ast_node_t;
 struct gm_ast_node
@@ -38,11 +42,7 @@ struct gm_ast_node
     union
     {
         // GM_AST_NODE_TYPE_FN
-        struct
-        {
-            gm_ast_fn_t fn;
-            gm_amd64_instruction_t *instructions;
-        };
+        gm_ast_fn_t fn;
     };
 };
 

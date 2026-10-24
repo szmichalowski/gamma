@@ -2,9 +2,10 @@
 #define GM_API_GENERATOR_ELF_H
 
 #include <gamma/arena/arena.h>
+#include <gamma/parser/parser.h>
 #include <stdint.h>
 
-typedef struct [[gnu::packed]] gm_elf64_header
+typedef struct [[gnu::packed]] gm_elf_header64
 {
     union
     {
@@ -30,9 +31,21 @@ typedef struct [[gnu::packed]] gm_elf64_header
     uint16_t section_header_entry_size;
     uint16_t section_header_entry_count;
     uint16_t section_header_entry_index;
-} gm_elf64_header_t;
+} gm_elf_header64_t;
+static_assert(sizeof(gm_elf_header64_t) == 64, "64-bit ELF header must be 64 (0x40) bytes long");
 
-static_assert(sizeof(gm_elf64_header_t) == 64, "64-bit ELF header must be 64 (0x40) bytes long");
+typedef struct [[gnu::packed]] gm_program_header64
+{
+    uint32_t type;
+    uint32_t flags;
+    uint64_t offset;
+    uint64_t virtual_address;
+    uint64_t physical_address;
+    uint64_t file_size;
+    uint64_t memory_size;
+    uint64_t alignment;
+} gm_program_header64_t;
+static_assert(sizeof(gm_program_header64_t) == 56, "64-bit ELF program header must be 56 (0x38) bytes long");
 
 typedef enum gm_object_file_type : uint16_t
 {
@@ -48,6 +61,10 @@ typedef enum gm_object_file_type : uint16_t
     GM_OBJECT_FILE_TYPE_PROCESSOR_HIGH = 0xFFFF
 } gm_object_file_type_e;
 
-bool gm_amd64_generate_elf64_header(gm_arena_t *arena, const gm_object_file_type_e file_type, const gm_elf64_header_t **out);
+bool gm_amd64_generate_elf_header64(gm_arena_t *arena, const gm_object_file_type_e file_type, const gm_elf_header64_t **out);
+
+bool gm_amd64_generate_program_header64(gm_arena_t *arena, const uint64_t code_size, const gm_program_header64_t **out);
+
+bool gm_amd64_generate_executable_image(gm_arena_t *arena, const gm_ast_node_t *ast_tree, const uint8_t **binary, size_t *binary_size);
 
 #endif // GM_API_GENERATOR_ELF_H

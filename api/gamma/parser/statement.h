@@ -30,7 +30,7 @@ struct gm_statement
     };
 };
 
-bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, const gm_statement_t **statements, const gm_token_t **out);
+bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_t **statements, const gm_token_t **out);
 
 bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_statement_t *statements);
 

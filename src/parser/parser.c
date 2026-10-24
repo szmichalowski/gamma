@@ -50,6 +50,7 @@ bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t 
             return false;
         }
         it->fn.name = name->string;
+        it->fn.token_name = name;
 
         const gm_token_t *left_paren = name->next;
         if (left_paren == nullptr)
@@ -141,9 +142,42 @@ static const char *gm_type_to_string(const gm_type_e type)
     }
 }
 
+static bool gm_ensure_fn_unique_names(gm_arena_t *arena, const gm_ast_node_t *ast_tree)
+{
+    static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_ensure_fn_unique_names(): AST node type enum size changed");
+
+    for (const gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
+    {
+        switch (it->type)
+        {
+        case GM_AST_NODE_TYPE_FN:
+            const gm_ast_fn_t *fn = &it->fn;
+            for (const gm_ast_node_t *it2 = ast_tree; it2 != nullptr; it2 = it2->next)
+            {
+                if (&it2->fn != fn && strcmp(it2->fn.name.data, fn->name.data) == 0)
+                {
+                    gm_print_syntax_error(arena, it2->fn.token_name->line, it2->fn.token_name->column, "function with the name \"%s\" has already been declared", it2->fn.name.data);
+                    return false;
+                }
+            }
+            break;
+        default:
+            fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool gm_ensure_ast_integrity(gm_arena_t *arena, const gm_ast_node_t *ast_tree)
 {
     static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_print_ast_tree(): AST node type enum size changed");
+
+    if (!gm_ensure_fn_unique_names(arena, ast_tree))
+    {
+        return false;
+    }
 
     bool res = true;
 

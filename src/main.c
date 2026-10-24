@@ -1,9 +1,11 @@
 #include <gamma/arena/arena.h>
+#include <gamma/generator/elf.h>
 #include <gamma/generator/generator.h>
 #include <gamma/lexer/lexer.h>
 #include <gamma/parser/parser.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 int main(const int argc, const char **argv)
 {
@@ -43,7 +45,7 @@ int main(const int argc, const char **argv)
         goto failure;
     }
 
-    if (!gm_amd64_compile_ast_tree(&arena, ast))
+    if (!gm_amd64_virtual_compile_ast_tree(&arena, ast))
     {
         goto failure;
     }
@@ -52,6 +54,56 @@ int main(const int argc, const char **argv)
     gm_amd64_print_ast_tree(ast);
     putchar('\n');
     putchar('\n');
+
+    if (!gm_amd64_physical_compile_ast_tree(&arena, ast))
+    {
+        goto failure;
+    }
+
+    const uint8_t *image_data;
+    size_t image_size;
+    if (!gm_amd64_generate_executable_image(&arena, ast, &image_data, &image_size))
+    {
+        goto failure;
+    }
+    printf("----- Generated image size = %zu bytes -----\n\n", image_size);
+
+    FILE *out_file = fopen("wynik.out", "w");
+    if (out_file == nullptr)
+    {
+        perror("ERROR: main(): fopen()");
+        goto failure;
+    }
+
+    if (fwrite(image_data, 1, image_size, out_file) != image_size)
+    {
+        perror("ERROR: main(): fwrite()");
+        fclose(out_file);
+        goto failure;
+    }
+
+    const int fd = fileno(out_file);
+    if (fd == -1)
+    {
+        perror("ERROR: main(): fileno()");
+        fclose(out_file);
+        goto failure;
+    }
+
+    if (fchmod(fd, 0775) == -1)
+    {
+        perror("ERROR: main(): fchmod()");
+        fclose(out_file);
+        goto failure;
+    }
+
+    if (fclose(out_file) != 0)
+    {
+        perror("ERROR: main(): fclose()");
+        goto failure;
+    }
+
+    printf("----- Generated image file = \"wynik.out\" -----\n\n");
 
     gm_arena_destroy(&arena);
     return EXIT_SUCCESS;

@@ -63,15 +63,124 @@ static bool gm_amd64_generate_fn_body(gm_arena_t *arena, const gm_statement_t *s
     return true;
 }
 
-bool gm_amd64_compile_ast_tree(gm_arena_t *arena, gm_ast_node_t *ast_tree)
+bool gm_amd64_virtual_compile_ast_tree(gm_arena_t *arena, gm_ast_node_t *ast_tree)
 {
-    static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_amd64_compile_ast_tree(): AST node type enum size changed");
+    static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_amd64_virtual_compile_ast_tree(): AST node type enum size changed");
     for (gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
     {
         switch (it->type)
         {
         case GM_AST_NODE_TYPE_FN:
-            if (!gm_amd64_generate_fn_body(arena, it->fn.statements, &it->instructions))
+            if (!gm_amd64_generate_fn_body(arena, it->fn.statements, &it->fn.instructions))
+            {
+                return false;
+            }
+
+            break;
+        default:
+            fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static uint8_t gm_amd64_register_to_number(const gm_amd64_register_type_e register_type)
+{
+    static_assert(GM_AMD64_REGISTER_TYPE_GUARDIAN_ANGEL == 6, "gm_amd64_register_to_string(): AMD64 register type enum size changed");
+
+    switch (register_type)
+    {
+    case GM_AMD64_REGISTER_TYPE_EAX:
+        return 0;
+    case GM_AMD64_REGISTER_TYPE_EBX:
+        return 3;
+    case GM_AMD64_REGISTER_TYPE_ECX:
+        return 1;
+    case GM_AMD64_REGISTER_TYPE_EDX:
+        return 2;
+    case GM_AMD64_REGISTER_TYPE_EDI:
+        return 7;
+    case GM_AMD64_REGISTER_TYPE_ESI:
+        return 6;
+    default:
+        fprintf(stderr, "\tERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
+        return 0;
+    }
+}
+
+static bool gm_amd64_generate_fn_binary(gm_arena_t *arena, const gm_amd64_instruction_t *instructions, uint8_t **binary_data, size_t *binary_data_size)
+{
+    static_assert(GM_AMD64_INSTRUCTION_TYPE_GUARDIAN_ANGEL == 2, "gm_amd64_generate_fn_binary(): amd64 instruction type enum size changed");
+    static_assert(GM_AMD64_REGISTER_TYPE_GUARDIAN_ANGEL == 6, "gm_amd64_generate_fn_binary(): amd64 register type enum size changed");
+    static_assert(GM_AMD64_INSTRUCTION_TYPE_GUARDIAN_ANGEL == 2, "gm_amd64_generate_fn_binary(): statement type enum size changed");
+
+    uint8_t *binary_data_result = gm_arena_alloc_array(arena, uint8_t, 1);
+    if (binary_data_result == nullptr)
+    {
+        fputs("ERROR: gm_amd64_generate_fn_binary(): allocation error\n", stderr);
+        return false;
+    }
+    uint8_t *binary_data_it = binary_data_result;
+    size_t size = 1;
+
+    for (const gm_amd64_instruction_t *inst = instructions; inst != nullptr; inst = inst->next)
+    {
+        uint8_t *new_it;
+        switch (inst->type)
+        {
+        case GM_AMD64_INSTRUCTION_TYPE_MOV_REG_NUM:
+            new_it = gm_arena_realloc_array(arena, uint8_t, binary_data_result, size, size + 5);
+            if (new_it == nullptr)
+            {
+                fputs("ERROR: gm_amd64_generate_fn_binary(): allocation error\n", stderr);
+                return false;
+            }
+            binary_data_result = new_it;
+            binary_data_it = binary_data_result + size - 1;
+            binary_data_it[1] = 0xB8 + gm_amd64_register_to_number(inst->register_type);
+            binary_data_it[2] = inst->number & 0xFF;
+            binary_data_it[3] = (inst->number >> 8) & 0xFF;
+            binary_data_it[4] = (inst->number >> 16) & 0xFF;
+            binary_data_it[5] = (inst->number >> 24) & 0xFF;
+            binary_data_it += 5;
+            size += 5;
+            break;
+        case GM_AMD64_INSTRUCTION_TYPE_SYSCALL:
+            new_it = gm_arena_realloc_array(arena, uint8_t, binary_data_result, size, size + 2);
+            if (new_it == nullptr)
+            {
+                fputs("ERROR: gm_amd64_generate_fn_binary(): allocation error\n", stderr);
+                return false;
+            }
+            binary_data_result = new_it;
+            binary_data_it = binary_data_result + size - 1;
+            binary_data_it[1] = 0x0F;
+            binary_data_it[2] = 0x05;
+            binary_data_it += 2;
+            size += 2;
+            break;
+        default:
+            fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
+            return false;
+        }
+    }
+
+    *binary_data = size > 1 ? binary_data_result + 1 : nullptr;
+    *binary_data_size = size - 1;
+    return true;
+}
+
+bool gm_amd64_physical_compile_ast_tree(gm_arena_t *arena, gm_ast_node_t *ast_tree)
+{
+    static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_amd64_physical_compile_ast_tree(): AST node type enum size changed");
+    for (gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
+    {
+        switch (it->type)
+        {
+        case GM_AST_NODE_TYPE_FN:
+            if (!gm_amd64_generate_fn_binary(arena, it->fn.instructions, &it->fn.binary_instructions, &it->fn.binary_instructions_size))
             {
                 return false;
             }
@@ -151,7 +260,7 @@ void gm_amd64_print_ast_tree(const gm_ast_node_t *ast_tree)
         {
         case GM_AST_NODE_TYPE_FN:
             printf("%s:\n", it->fn.name.data);
-            gm_amd64_print_instructions(it->instructions);
+            gm_amd64_print_instructions(it->fn.instructions);
             putchar('\n');
             break;
         default:

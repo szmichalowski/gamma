@@ -3,11 +3,16 @@
 
 fn main() [s32]
 {
-    return 0;
+    return 67;
 }
 
 
 fn add() [s32]
 {
     return 4;
+}
+
+fn add2() [s32]
+{
+    return 90;
 }
