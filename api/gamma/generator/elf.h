@@ -61,9 +61,9 @@ typedef enum gm_object_file_type : uint16_t
     GM_OBJECT_FILE_TYPE_PROCESSOR_HIGH = 0xFFFF
 } gm_object_file_type_e;
 
-bool gm_amd64_generate_elf_header64(gm_arena_t *arena, const gm_object_file_type_e file_type, const gm_elf_header64_t **out);
+bool gm_amd64_generate_elf_header64(gm_elf_header64_t *header, const gm_object_file_type_e file_type);
 
-bool gm_amd64_generate_program_header64(gm_arena_t *arena, const uint64_t code_size, const gm_program_header64_t **out);
+void gm_amd64_generate_program_header64(gm_program_header64_t *header, const uint64_t code_size);
 
 bool gm_amd64_generate_executable_image(gm_arena_t *arena, const gm_ast_node_t *ast_tree, const uint8_t **binary, size_t *binary_size);
 

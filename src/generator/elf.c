@@ -54,15 +54,8 @@ static uint64_t gm_u64_to_little_endian(const uint64_t value)
 
 static constexpr uint64_t gm_basic_virtual_address = 0x400000;
 
-bool gm_amd64_generate_elf_header64(gm_arena_t *arena, const gm_object_file_type_e file_type, const gm_elf_header64_t **out)
+bool gm_amd64_generate_elf_header64(gm_elf_header64_t *header, const gm_object_file_type_e file_type)
 {
-    gm_elf_header64_t *header = gm_arena_alloc_single(arena, gm_elf_header64_t);
-    if (header == nullptr)
-    {
-        fputs("ERROR: gm_amd64_generate_elf_header64(): allocation error\n", stderr);
-        return false;
-    }
-
     header->magic8[0] = 0x7F;
     header->magic8[1] = 'E';
     header->magic8[2] = 'L';
@@ -96,7 +89,6 @@ bool gm_amd64_generate_elf_header64(gm_arena_t *arena, const gm_object_file_type
     header->section_header_entry_count = gm_u16_to_little_endian(0x00);
     header->section_header_entry_index = gm_u16_to_little_endian(0x00);
 
-    *out = header;
     return true;
 }
 
@@ -105,15 +97,8 @@ static constexpr uint32_t gm_prot_read = 1 << 2;
 static constexpr uint32_t gm_prot_execute = 1 << 0;
 static constexpr uint64_t gm_page_alignment = 4096;
 
-bool gm_amd64_generate_program_header64(gm_arena_t *arena, const uint64_t code_size, const gm_program_header64_t **out)
+void gm_amd64_generate_program_header64(gm_program_header64_t *header, const uint64_t code_size)
 {
-    gm_program_header64_t *header = gm_arena_alloc_single(arena, gm_program_header64_t);
-    if (header == nullptr)
-    {
-        fputs("ERROR: gm_amd64_generate_program_header64(): allocation error\n", stderr);
-        return false;
-    }
-
     header->type = gm_u32_to_little_endian(0x01); // Loadable segment
     header->flags = gm_u32_to_little_endian(gm_prot_read | gm_prot_execute);
     header->offset = 0;
@@ -123,9 +108,6 @@ bool gm_amd64_generate_program_header64(gm_arena_t *arena, const uint64_t code_s
     header->file_size = full_size;
     header->memory_size = full_size;
     header->alignment = gm_u64_to_little_endian(gm_page_alignment);
-
-    *out = header;
-    return true;
 }
 
 static constexpr size_t gm_preamble_size = 14;
@@ -142,44 +124,19 @@ bool gm_amd64_generate_executable_image(gm_arena_t *arena, const gm_ast_node_t *
 {
     static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_amd64_generate_executable_image(): AST node type enum size changed");
 
-    size_t accumulated_instructions = 0;
-    for (const gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
-    {
-        if (it->type != GM_AST_NODE_TYPE_FN)
-        {
-            continue;
-        }
-
-        accumulated_instructions += it->fn.binary_instructions_size;
-    }
-
-    const size_t full_size = sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + gm_preamble_size + accumulated_instructions;
-    uint8_t *bytes = gm_arena_alloc(arena, full_size);
+    size_t alloc_size = sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + gm_preamble_size;
+    uint8_t *bytes = gm_arena_alloc(arena, alloc_size);
     if (bytes == nullptr)
     {
         fputs("ERROR: gm_amd64_generate_executable_image(): allocation error\n", stderr);
         return false;
     }
 
-    const gm_elf_header64_t *elf;
-    if (!gm_amd64_generate_elf_header64(arena, GM_OBJECT_FILE_TYPE_EXECUTABLE, &elf))
-    {
-        return false;
-    }
-
-    const gm_program_header64_t *prog;
-    if (!gm_amd64_generate_program_header64(arena, gm_preamble_size + accumulated_instructions, &prog))
-    {
-        return false;
-    }
-
-    memcpy(bytes, elf, sizeof(gm_elf_header64_t));
-    memcpy(bytes + sizeof(gm_elf_header64_t), prog, sizeof(gm_program_header64_t));
     memcpy(bytes + sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t), gm_preamble, gm_preamble_size);
-    uint8_t *binary_it = bytes + sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + gm_preamble_size;
-    const uint8_t *const cbinary_it = binary_it;
 
     bool main_encountered = false;
+    uint8_t *preamble_call_main;
+    uint32_t main_offset_le;
     for (const gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
     {
         if (it->type != GM_AST_NODE_TYPE_FN)
@@ -187,20 +144,25 @@ bool gm_amd64_generate_executable_image(gm_arena_t *arena, const gm_ast_node_t *
             continue;
         }
 
+        const size_t new_size = alloc_size + it->fn.binary_instructions_size;
+        uint8_t *new_alloc = gm_arena_realloc(arena, bytes, alloc_size, new_size);
+        if (new_alloc == nullptr)
+        {
+            fputs("ERROR: gm_amd64_generate_executable_image(): allocation error\n", stderr);
+            return false;
+        }
+        bytes = new_alloc;
+
         if (strcmp(it->fn.name.data, "main") == 0)
         {
-            uint8_t *preamble_call_main = bytes + sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + gm_preamble_call_main_offset;
-            const uint32_t main_offset = gm_preamble_after_call_size + (binary_it - cbinary_it);
-            const uint32_t main_offset_le = gm_u32_to_little_endian(main_offset);
-            preamble_call_main[0] = main_offset_le & 0xFF;
-            preamble_call_main[1] = (main_offset_le >> 8) & 0xFF;
-            preamble_call_main[2] = (main_offset_le >> 16) & 0xFF;
-            preamble_call_main[3] = (main_offset_le >> 24) & 0xFF;
+            preamble_call_main = bytes + sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + gm_preamble_call_main_offset;
+            const uint32_t main_offset = alloc_size - sizeof(gm_elf_header64_t) - sizeof(gm_program_header64_t) - gm_preamble_size + gm_preamble_after_call_size;
+            main_offset_le = gm_u32_to_little_endian(main_offset);
             main_encountered = true;
         }
 
-        memcpy(binary_it, it->fn.binary_instructions, it->fn.binary_instructions_size);
-        binary_it += it->fn.binary_instructions_size;
+        memcpy(bytes + alloc_size, it->fn.binary_instructions, it->fn.binary_instructions_size);
+        alloc_size = new_size;
     }
 
     if (!main_encountered)
@@ -211,7 +173,20 @@ bool gm_amd64_generate_executable_image(gm_arena_t *arena, const gm_ast_node_t *
         return false;
     }
 
+    gm_elf_header64_t *elf = (gm_elf_header64_t *)bytes;
+    if (!gm_amd64_generate_elf_header64(elf, GM_OBJECT_FILE_TYPE_EXECUTABLE))
+    {
+        return false;
+    }
+
+    gm_program_header64_t *prog = (gm_program_header64_t *)(bytes + sizeof(gm_elf_header64_t));
+    gm_amd64_generate_program_header64(prog, alloc_size - sizeof(gm_elf_header64_t) - sizeof(gm_program_header64_t));
+    preamble_call_main[0] = main_offset_le & 0xFF;
+    preamble_call_main[1] = (main_offset_le >> 8) & 0xFF;
+    preamble_call_main[2] = (main_offset_le >> 16) & 0xFF;
+    preamble_call_main[3] = (main_offset_le >> 24) & 0xFF;
+
     *binary = bytes;
-    *binary_size = full_size;
+    *binary_size = alloc_size;
     return true;
 }

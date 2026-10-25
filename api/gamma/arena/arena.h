@@ -40,6 +40,6 @@ bool gm_arena_checkpoint_hard_end(gm_arena_checkpoint_t *checkpoint);
 #define gm_arena_alloc(arena, size) gm_arena_alloc_aligned((arena), (size), alignof(max_align_t))
 
 #define gm_arena_realloc_array(arena, T, old_ptr, old_count, new_count) (T *)gm_arena_realloc_aligned((arena), (old_ptr), sizeof(T) * (old_count), sizeof(T) * (new_count), alignof(T))
-#define gm_arena_realloc(arena, old_ptr, old_size, new_size) gm_arena_alloc_aligned((arena), (old_ptr), (old_size), (new_size), alignof(max_align_t))
+#define gm_arena_realloc(arena, old_ptr, old_size, new_size) gm_arena_realloc_aligned((arena), (old_ptr), (old_size), (new_size), alignof(max_align_t))
 
 #endif // GM_API_ARENA_ARENA_H
