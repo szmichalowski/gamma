@@ -9,11 +9,6 @@ static bool gm_amd64_generate_fn_body(gm_arena_t *arena, const gm_statement_t *s
     static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 1, "gm_amd64_generate_fn_body(): statement type enum size changed");
 
     gm_amd64_instruction_t *instructions_result = gm_arena_alloc_single(arena, gm_amd64_instruction_t);
-    if (instructions_result == nullptr)
-    {
-        fputs("ERROR: gm_amd64_generate_fn_body(): allocation error\n", stderr);
-        return false;
-    }
     gm_amd64_instruction_t *instructions_it = instructions_result;
 
     for (const gm_statement_t *stmt = statements; stmt != nullptr; stmt = stmt->next)
@@ -22,22 +17,12 @@ static bool gm_amd64_generate_fn_body(gm_arena_t *arena, const gm_statement_t *s
         {
         case GM_STATEMENT_TYPE_RETURN:
             instructions_it->next = gm_arena_alloc_single(arena, gm_amd64_instruction_t);
-            if (instructions_result == nullptr)
-            {
-                fputs("ERROR: gm_amd64_generate_fn_body(): allocation error\n", stderr);
-                return false;
-            }
             instructions_it = instructions_it->next;
             instructions_it->type = GM_AMD64_INSTRUCTION_TYPE_MOV_REG_NUM;
             instructions_it->register_type = GM_AMD64_REGISTER_TYPE_EAX;
             instructions_it->number = stmt->number;
 
             instructions_it->next = gm_arena_alloc_single(arena, gm_amd64_instruction_t);
-            if (instructions_result == nullptr)
-            {
-                fputs("ERROR: gm_amd64_generate_fn_body(): allocation error\n", stderr);
-                return false;
-            }
             instructions_it = instructions_it->next;
             instructions_it->type = GM_AMD64_INSTRUCTION_TYPE_RET;
 
@@ -105,27 +90,15 @@ static bool gm_amd64_generate_fn_binary(gm_arena_t *arena, const gm_amd64_instru
     static_assert(GM_AMD64_REGISTER_TYPE_GUARDIAN_ANGEL == 6, "gm_amd64_generate_fn_binary(): amd64 register type enum size changed");
 
     uint8_t *binary_data_result = gm_arena_alloc_array(arena, uint8_t, 1);
-    if (binary_data_result == nullptr)
-    {
-        fputs("ERROR: gm_amd64_generate_fn_binary(): allocation error\n", stderr);
-        return false;
-    }
     uint8_t *binary_data_it = binary_data_result;
     size_t size = 1;
 
     for (const gm_amd64_instruction_t *inst = instructions; inst != nullptr; inst = inst->next)
     {
-        uint8_t *new_it;
         switch (inst->type)
         {
         case GM_AMD64_INSTRUCTION_TYPE_MOV_REG_NUM:
-            new_it = gm_arena_realloc_array(arena, uint8_t, binary_data_result, size, size + 5);
-            if (new_it == nullptr)
-            {
-                fputs("ERROR: gm_amd64_generate_fn_binary(): allocation error\n", stderr);
-                return false;
-            }
-            binary_data_result = new_it;
+            binary_data_result = gm_arena_realloc_array(arena, uint8_t, binary_data_result, size, size + 5);
             binary_data_it = binary_data_result + size - 1;
             binary_data_it[1] = 0xB8 + gm_amd64_register_to_number(inst->register_type);
             binary_data_it[2] = inst->number & 0xFF;
@@ -136,26 +109,14 @@ static bool gm_amd64_generate_fn_binary(gm_arena_t *arena, const gm_amd64_instru
             size += 5;
             break;
         case GM_AMD64_INSTRUCTION_TYPE_RET:
-            new_it = gm_arena_realloc_array(arena, uint8_t, binary_data_result, size, size + 1);
-            if (new_it == nullptr)
-            {
-                fputs("ERROR: gm_amd64_generate_fn_binary(): allocation error\n", stderr);
-                return false;
-            }
-            binary_data_result = new_it;
+            binary_data_result = gm_arena_realloc_array(arena, uint8_t, binary_data_result, size, size + 1);
             binary_data_it = binary_data_result + size - 1;
             binary_data_it[1] = 0xC3;
             binary_data_it += 1;
             size += 1;
             break;
         case GM_AMD64_INSTRUCTION_TYPE_SYSCALL:
-            new_it = gm_arena_realloc_array(arena, uint8_t, binary_data_result, size, size + 2);
-            if (new_it == nullptr)
-            {
-                fputs("ERROR: gm_amd64_generate_fn_binary(): allocation error\n", stderr);
-                return false;
-            }
-            binary_data_result = new_it;
+            binary_data_result = gm_arena_realloc_array(arena, uint8_t, binary_data_result, size, size + 2);
             binary_data_it = binary_data_result + size - 1;
             binary_data_it[1] = 0x0F;
             binary_data_it[2] = 0x05;

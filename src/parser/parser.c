@@ -14,11 +14,6 @@ bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t 
 
     // gm_arena_alloc_single() zeroes out allocated memory on success, so result-<next is a nullptr
     gm_ast_node_t *result = gm_arena_alloc_single(arena, gm_ast_node_t);
-    if (result == nullptr)
-    {
-        fputs("ERROR: gm_parse_tokens(): allocation error\n", stderr);
-        return false;
-    }
     gm_ast_node_t *it = result;
 
     while (tokens != nullptr)
@@ -30,11 +25,6 @@ bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t 
         }
 
         it->next = gm_arena_alloc_single(arena, gm_ast_node_t);
-        if (it->next == nullptr)
-        {
-            fputs("ERROR: gm_parse_tokens(): allocation error\n", stderr);
-            return false;
-        }
         it = it->next;
         it->type = GM_AST_NODE_TYPE_FN;
 

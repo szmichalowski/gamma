@@ -95,6 +95,8 @@ bool gm_arena_init(gm_arena_t *arena, size_t reserve_size)
     arena->reserved = reserve_size;
     arena->commited = 0;
     arena->offset = 0;
+    arena->longjmp_buffer = nullptr;
+    arena->longjmp_ret = 0;
 
     return true;
 }
@@ -107,6 +109,12 @@ void gm_arena_destroy(gm_arena_t *arena)
     }
 
     *arena = (gm_arena_t) { 0 };
+}
+
+void gm_arena_set_callback(gm_arena_t *arena, jmp_buf *longjmp_buffer, const int longjmp_ret)
+{
+    arena->longjmp_buffer = longjmp_buffer;
+    arena->longjmp_ret = longjmp_ret;
 }
 
 static bool gm_arena_ensure_commited(gm_arena_t *arena, const size_t required_offset)
@@ -134,11 +142,39 @@ static bool gm_arena_ensure_commited(gm_arena_t *arena, const size_t required_of
 
 void *gm_arena_alloc_aligned(gm_arena_t *arena, const size_t size, const size_t align)
 {
+    return gm_arena_alloc_aligned_ext(arena, size, align, nullptr, 0);
+}
+
+void *gm_arena_realloc_aligned(gm_arena_t *arena, void *old_ptr, const size_t old_size, const size_t new_size, const size_t align)
+{
+    return gm_arena_realloc_aligned_ext(arena, old_ptr, old_size, new_size, align, nullptr, 0);
+}
+
+#define GM_ARENA_FAIL()                                                                              \
+    do                                                                                               \
+    {                                                                                                \
+        if (source_file != nullptr)                                                                  \
+        {                                                                                            \
+            fprintf(stderr, "%s:%zu: ERROR: could not allocate memory\n", source_file, source_line); \
+        }                                                                                            \
+        else                                                                                         \
+        {                                                                                            \
+            fputs("ERROR: could not allocate memory", stderr);                                       \
+        }                                                                                            \
+        if (arena->longjmp_buffer != nullptr)                                                        \
+        {                                                                                            \
+            longjmp(*arena->longjmp_buffer, arena->longjmp_ret);                                     \
+        }                                                                                            \
+        return nullptr;                                                                              \
+    } while (0)
+
+void *gm_arena_alloc_aligned_ext(gm_arena_t *arena, const size_t size, const size_t align, const char *source_file, const size_t source_line)
+{
     if (arena->base == nullptr)
     {
         if (!gm_arena_init(arena, GM_ARENA_DEFAULT_RESERVE_SIZE))
         {
-            return nullptr;
+            GM_ARENA_FAIL();
         }
     }
 
@@ -149,7 +185,7 @@ void *gm_arena_alloc_aligned(gm_arena_t *arena, const size_t size, const size_t 
 
     if (!gm_arena_ensure_commited(arena, new_offset))
     {
-        return nullptr;
+        GM_ARENA_FAIL();
     }
 
     arena->offset = new_offset;
@@ -159,7 +195,7 @@ void *gm_arena_alloc_aligned(gm_arena_t *arena, const size_t size, const size_t 
     return result;
 }
 
-void *gm_arena_realloc_aligned(gm_arena_t *arena, void *old_ptr, const size_t old_size, const size_t new_size, const size_t align)
+void *gm_arena_realloc_aligned_ext(gm_arena_t *arena, void *old_ptr, const size_t old_size, const size_t new_size, const size_t align, const char *source_file, const size_t source_line)
 {
     if (old_ptr == nullptr || old_size == 0)
     {
@@ -170,6 +206,10 @@ void *gm_arena_realloc_aligned(gm_arena_t *arena, void *old_ptr, const size_t ol
     if (old_bytes < arena->base || old_bytes > arena->base + arena->offset)
     {
         fputs("ERROR: gm_align_forward_size(): input pointer outside of the arena\n", stderr);
+        if (arena->longjmp_buffer != nullptr)
+        {
+            longjmp(*arena->longjmp_buffer, arena->longjmp_ret);
+        }
         return nullptr;
     }
 
@@ -180,7 +220,7 @@ void *gm_arena_realloc_aligned(gm_arena_t *arena, void *old_ptr, const size_t ol
 
         if (!gm_arena_ensure_commited(arena, new_offset))
         {
-            return nullptr;
+            GM_ARENA_FAIL();
         }
 
         if (new_size > old_size)
@@ -234,6 +274,10 @@ bool gm_arena_checkpoint_end(gm_arena_checkpoint_t *checkpoint)
     if (checkpoint->offset > checkpoint->arena->offset)
     {
         fputs("ERROR: gm_arena_checkpoint_end(): input pointer outside of the arena\n", stderr);
+        if (checkpoint->arena->longjmp_buffer != nullptr)
+        {
+            longjmp(*checkpoint->arena->longjmp_buffer, checkpoint->arena->longjmp_ret);
+        }
         return false;
     }
     checkpoint->arena->offset = checkpoint->offset;
@@ -246,6 +290,10 @@ bool gm_arena_checkpoint_hard_end(gm_arena_checkpoint_t *checkpoint)
     if (checkpoint->offset > checkpoint->arena->offset)
     {
         fputs("ERROR: gm_arena_checkpoint_end(): input pointer outside of the arena\n", stderr);
+        if (checkpoint->arena->longjmp_buffer != nullptr)
+        {
+            longjmp(*checkpoint->arena->longjmp_buffer, checkpoint->arena->longjmp_ret);
+        }
         return false;
     }
     checkpoint->arena->offset = checkpoint->offset;

@@ -21,11 +21,6 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
     tokens = tokens->next;
 
     gm_statement_t *statements_result = gm_arena_alloc_single(arena, gm_statement_t);
-    if (statements_result == nullptr)
-    {
-        fputs("ERROR: gm_parse_fn_body(): allocation error\n", stderr);
-        return false;
-    }
     gm_statement_t *statements_it = statements_result;
 
     while (tokens->type != GM_TOKEN_TYPE_RIGHT_CURLY)
@@ -36,11 +31,6 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
             return false;
         }
         statements_it->next = gm_arena_alloc_single(arena, gm_statement_t);
-        if (statements_it->next == nullptr)
-        {
-            fputs("ERROR: gm_parse_fn_body(): allocation error\n", stderr);
-            return false;
-        }
         statements_it = statements_it->next;
         statements_it->type = GM_STATEMENT_TYPE_RETURN;
         statements_it->token_return = tokens;

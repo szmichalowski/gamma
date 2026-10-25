@@ -126,12 +126,6 @@ bool gm_amd64_generate_executable_image(gm_arena_t *arena, const gm_ast_node_t *
 
     size_t alloc_size = sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + gm_preamble_size;
     uint8_t *bytes = gm_arena_alloc(arena, alloc_size);
-    if (bytes == nullptr)
-    {
-        fputs("ERROR: gm_amd64_generate_executable_image(): allocation error\n", stderr);
-        return false;
-    }
-
     memcpy(bytes + sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t), gm_preamble, gm_preamble_size);
 
     bool main_encountered = false;
@@ -145,13 +139,7 @@ bool gm_amd64_generate_executable_image(gm_arena_t *arena, const gm_ast_node_t *
         }
 
         const size_t new_size = alloc_size + it->fn.binary_instructions_size;
-        uint8_t *new_alloc = gm_arena_realloc(arena, bytes, alloc_size, new_size);
-        if (new_alloc == nullptr)
-        {
-            fputs("ERROR: gm_amd64_generate_executable_image(): allocation error\n", stderr);
-            return false;
-        }
-        bytes = new_alloc;
+        bytes = gm_arena_realloc(arena, bytes, alloc_size, new_size);
 
         if (strcmp(it->fn.name.data, "main") == 0)
         {

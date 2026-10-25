@@ -18,12 +18,6 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
 
     gm_token_t *result = gm_arena_alloc_single(arena, gm_token_t);
     gm_token_t *it = result;
-    if (result == nullptr)
-    {
-        fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
-        fclose(file);
-        return false;
-    }
 
     int ch;
     size_t line = 1;
@@ -46,13 +40,6 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
         if (ch == '`')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
-            if (it->next == nullptr)
-            {
-                fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
-                fclose(file);
-                return false;
-            }
-
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_GRAVE,
@@ -66,13 +53,6 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
         if (ch == '(')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
-            if (it->next == nullptr)
-            {
-                fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
-                fclose(file);
-                return false;
-            }
-
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_LEFT_PAREN,
@@ -86,13 +66,6 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
         if (ch == ')')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
-            if (it->next == nullptr)
-            {
-                fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
-                fclose(file);
-                return false;
-            }
-
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_RIGHT_PAREN,
@@ -106,13 +79,6 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
         if (ch == '{')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
-            if (it->next == nullptr)
-            {
-                fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
-                fclose(file);
-                return false;
-            }
-
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_LEFT_CURLY,
@@ -126,13 +92,6 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
         if (ch == '}')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
-            if (it->next == nullptr)
-            {
-                fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
-                fclose(file);
-                return false;
-            }
-
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_RIGHT_CURLY,
@@ -146,13 +105,6 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
         if (ch == '[')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
-            if (it->next == nullptr)
-            {
-                fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
-                fclose(file);
-                return false;
-            }
-
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_LEFT_SQUARE,
@@ -166,13 +118,6 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
         if (ch == ']')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
-            if (it->next == nullptr)
-            {
-                fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
-                fclose(file);
-                return false;
-            }
-
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_RIGHT_SQUARE,
@@ -186,13 +131,6 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
         if (ch == ';')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
-            if (it->next == nullptr)
-            {
-                fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
-                fclose(file);
-                return false;
-            }
-
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_SEMICOLON,
@@ -212,13 +150,6 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
         if (isdigit(ch))
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
-            if (it->next == nullptr)
-            {
-                fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
-                fclose(file);
-                return false;
-            }
-
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_NUMBER,
@@ -259,42 +190,20 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
         if (isalpha(ch) || ch == '_')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
-            if (it->next == nullptr)
-            {
-                fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
-                fclose(file);
-                return false;
-            }
-
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_IDENTIFIER,
                 .line = line,
                 .column = column
             };
-            if (!gm_string_init(arena, &it->string))
-            {
-                fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
-                fclose(file);
-                return false;
-            }
-            if (!gm_string_append_char(arena, &it->string, ch))
-            {
-                fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
-                fclose(file);
-                return false;
-            }
+            gm_string_init(arena, &it->string);
+            gm_string_append_char(arena, &it->string, ch);
 
             while ((ch = fgetc(file)) != EOF)
             {
                 if (isalpha(ch) || isdigit(ch) || ch == '_')
                 {
-                    if (!gm_string_append_char(arena, &it->string, ch))
-                    {
-                        fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
-                        fclose(file);
-                        return false;
-                    }
+                    gm_string_append_char(arena, &it->string, ch);
                     ++column;
                     continue;
                 }

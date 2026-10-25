@@ -3,9 +3,12 @@
 #include <gamma/generator/generator.h>
 #include <gamma/lexer/lexer.h>
 #include <gamma/parser/parser.h>
+#include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+
+static constexpr int alloc_failure_code = 17;
 
 int main(const int argc, const char **argv)
 {
@@ -17,6 +20,23 @@ int main(const int argc, const char **argv)
 
     gm_arena_t arena;
     gm_arena_init(&arena, 0);
+
+    jmp_buf longjump_buffer;
+    gm_arena_set_callback(&arena, &longjump_buffer, alloc_failure_code);
+
+    const int jmp_ret = setjmp(longjump_buffer);
+    if (jmp_ret != 0)
+    {
+        if (jmp_ret == alloc_failure_code)
+        {
+            fputs("main(): caught allocation error code, exitting...\n", stderr);
+        }
+        else
+        {
+            fputs("main(): caught unknown error code, exitting...\n", stderr);
+        }
+        goto failure;
+    }
 
     const gm_token_t *tokens;
     if (!gm_lex_file(&arena, argv[1], &tokens))
