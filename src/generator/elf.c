@@ -103,7 +103,7 @@ bool gm_amd64_generate_elf_header64(gm_arena_t *arena, const gm_object_file_type
 static constexpr uint32_t gm_prot_read = 1 << 2;
 // static constexpr uint32_t gm_prot_write = 1 << 1;
 static constexpr uint32_t gm_prot_execute = 1 << 0;
-static constexpr uint64_t page_alignment = 4096;
+static constexpr uint64_t gm_page_alignment = 4096;
 
 bool gm_amd64_generate_program_header64(gm_arena_t *arena, const uint64_t code_size, const gm_program_header64_t **out)
 {
@@ -122,54 +122,96 @@ bool gm_amd64_generate_program_header64(gm_arena_t *arena, const uint64_t code_s
     const uint64_t full_size = sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + code_size;
     header->file_size = full_size;
     header->memory_size = full_size;
-    header->alignment = gm_u64_to_little_endian(page_alignment);
+    header->alignment = gm_u64_to_little_endian(gm_page_alignment);
 
     *out = header;
     return true;
 }
 
+static constexpr size_t gm_preamble_size = 14;
+static constexpr uint8_t gm_preamble[gm_preamble_size] = {
+    0xE8, 0x09, 0x00, 0x00, 0x00, // call 0x400009 <main>
+    0x89, 0xC7, // mov edi, eax
+    0xB8, 0x3C, 0x00, 0x00, 0x00, // mov eax, 60
+    0x0f, 0x05 // syscall
+};
+static constexpr size_t gm_preamble_call_main_offset = 1;
+static constexpr size_t gm_preamble_after_call_size = 9;
+
 bool gm_amd64_generate_executable_image(gm_arena_t *arena, const gm_ast_node_t *ast_tree, const uint8_t **binary, size_t *binary_size)
 {
     static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_amd64_generate_executable_image(): AST node type enum size changed");
 
+    size_t accumulated_instructions = 0;
     for (const gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
     {
-        if (it->type != GM_AST_NODE_TYPE_FN && strcmp(it->fn.name.data, "main") != 0)
+        if (it->type != GM_AST_NODE_TYPE_FN)
         {
             continue;
         }
 
-        const size_t full_size = sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + it->fn.binary_instructions_size;
-        uint8_t *bytes = gm_arena_alloc(arena, full_size);
-        if (bytes == nullptr)
-        {
-            fputs("ERROR: gm_amd64_generate_executable_image(): allocation error\n", stderr);
-            return false;
-        }
-
-        const gm_elf_header64_t *elf;
-        if (!gm_amd64_generate_elf_header64(arena, GM_OBJECT_FILE_TYPE_EXECUTABLE, &elf))
-        {
-            return false;
-        }
-
-        const gm_program_header64_t *prog;
-        if (!gm_amd64_generate_program_header64(arena, it->fn.binary_instructions_size, &prog))
-        {
-            return false;
-        }
-
-        memcpy(bytes, elf, sizeof(gm_elf_header64_t));
-        memcpy(bytes + sizeof(gm_elf_header64_t), prog, sizeof(gm_program_header64_t));
-        memcpy(bytes + sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t), it->fn.binary_instructions, it->fn.binary_instructions_size);
-
-        *binary = bytes;
-        *binary_size = full_size;
-        return true;
+        accumulated_instructions += it->fn.binary_instructions_size;
     }
 
-    fputs("Linker Error: no \"main\" function provided\n", stderr);
-    *binary = nullptr;
-    *binary_size = 0;
-    return false;
+    const size_t full_size = sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + gm_preamble_size + accumulated_instructions;
+    uint8_t *bytes = gm_arena_alloc(arena, full_size);
+    if (bytes == nullptr)
+    {
+        fputs("ERROR: gm_amd64_generate_executable_image(): allocation error\n", stderr);
+        return false;
+    }
+
+    const gm_elf_header64_t *elf;
+    if (!gm_amd64_generate_elf_header64(arena, GM_OBJECT_FILE_TYPE_EXECUTABLE, &elf))
+    {
+        return false;
+    }
+
+    const gm_program_header64_t *prog;
+    if (!gm_amd64_generate_program_header64(arena, gm_preamble_size + accumulated_instructions, &prog))
+    {
+        return false;
+    }
+
+    memcpy(bytes, elf, sizeof(gm_elf_header64_t));
+    memcpy(bytes + sizeof(gm_elf_header64_t), prog, sizeof(gm_program_header64_t));
+    memcpy(bytes + sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t), gm_preamble, gm_preamble_size);
+    uint8_t *binary_it = bytes + sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + gm_preamble_size;
+    const uint8_t *const cbinary_it = binary_it;
+
+    bool main_encountered = false;
+    for (const gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
+    {
+        if (it->type != GM_AST_NODE_TYPE_FN)
+        {
+            continue;
+        }
+
+        if (strcmp(it->fn.name.data, "main") == 0)
+        {
+            uint8_t *preamble_call_main = bytes + sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + gm_preamble_call_main_offset;
+            const uint32_t main_offset = gm_preamble_after_call_size + (binary_it - cbinary_it);
+            const uint32_t main_offset_le = gm_u32_to_little_endian(main_offset);
+            preamble_call_main[0] = main_offset_le & 0xFF;
+            preamble_call_main[1] = (main_offset_le >> 8) & 0xFF;
+            preamble_call_main[2] = (main_offset_le >> 16) & 0xFF;
+            preamble_call_main[3] = (main_offset_le >> 24) & 0xFF;
+            main_encountered = true;
+        }
+
+        memcpy(binary_it, it->fn.binary_instructions, it->fn.binary_instructions_size);
+        binary_it += it->fn.binary_instructions_size;
+    }
+
+    if (!main_encountered)
+    {
+        fputs("Linker Error: no \"main\" function provided\n", stderr);
+        *binary = nullptr;
+        *binary_size = 0;
+        return false;
+    }
+
+    *binary = bytes;
+    *binary_size = full_size;
+    return true;
 }

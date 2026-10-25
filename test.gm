@@ -1,15 +1,15 @@
 
 
 
-fn main() [s32]
-{
-    return 25;
-}
-
 
 fn add() [s32]
 {
     return 4;
+}
+
+fn main() [s32]
+{
+    return 179;
 }
 
 fn add2() [s32]
