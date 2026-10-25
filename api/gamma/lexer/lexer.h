@@ -34,6 +34,9 @@ struct gm_token
     gm_token_type_e type;
     size_t line;
     size_t column;
+    size_t width;
+    const char *source_file;
+    const char *line_start;
 
     union
     {
@@ -45,7 +48,7 @@ struct gm_token
     };
 };
 
-bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out);
+bool gm_lex_file(gm_arena_t *arena, const char *path, const char *code, const gm_token_t **out);
 
 void gm_print_tokens(const gm_token_t *tokens);
 

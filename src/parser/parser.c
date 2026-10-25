@@ -20,7 +20,7 @@ bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t 
     {
         if (tokens->type != GM_TOKEN_TYPE_FN)
         {
-            gm_print_syntax_error(arena, tokens->line, tokens->column, "expected only function declaration in the global scope");
+            gm_print_syntax_error_token(arena, tokens, "expected only function declaration in the global scope");
             return false;
         }
 
@@ -31,12 +31,12 @@ bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t 
         const gm_token_t *name = tokens->next;
         if (name == nullptr)
         {
-            gm_print_syntax_error(arena, tokens->line, tokens->column, "unexpected end of file");
+            gm_print_syntax_error_token(arena, tokens, "unexpected end of file");
             return false;
         }
         if (name->type != GM_TOKEN_TYPE_IDENTIFIER)
         {
-            gm_print_syntax_error(arena, name->line, name->column, "expected identifier");
+            gm_print_syntax_error_token(arena, name, "expected identifier");
             return false;
         }
         it->fn.name = name->string;
@@ -45,53 +45,53 @@ bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t 
         const gm_token_t *left_paren = name->next;
         if (left_paren == nullptr)
         {
-            gm_print_syntax_error(arena, left_paren->line, left_paren->column, "unexpected end of file");
+            gm_print_syntax_error_token(arena, left_paren, "unexpected end of file");
             return false;
         }
         if (left_paren->type != GM_TOKEN_TYPE_LEFT_PAREN)
         {
-            gm_print_syntax_error(arena, left_paren->line, left_paren->column, "expected left parenthesis");
+            gm_print_syntax_error_token(arena, left_paren, "expected left parenthesis");
             return false;
         }
 
         const gm_token_t *right_paren = left_paren->next;
         if (right_paren == nullptr)
         {
-            gm_print_syntax_error(arena, right_paren->line, right_paren->column, "unexpected end of file");
+            gm_print_syntax_error_token(arena, right_paren, "unexpected end of file");
             return false;
         }
         if (right_paren->type != GM_TOKEN_TYPE_RIGHT_PAREN)
         {
-            gm_print_syntax_error(arena, right_paren->line, right_paren->column, "expected right parenthesis");
+            gm_print_syntax_error_token(arena, right_paren, "expected right parenthesis");
             return false;
         }
 
         const gm_token_t *grave = right_paren->next;
         if (grave == nullptr)
         {
-            gm_print_syntax_error(arena, grave->line, grave->column, "unexpected end of file");
+            gm_print_syntax_error_token(arena, grave, "unexpected end of file");
             return false;
         }
         if (grave->type != GM_TOKEN_TYPE_GRAVE)
         {
-            gm_print_syntax_error(arena, grave->line, grave->column, "expected left square bracket");
+            gm_print_syntax_error_token(arena, grave, "expected grave/backtick");
             return false;
         }
 
         const gm_token_t *return_type = grave->next;
         if (return_type == nullptr)
         {
-            gm_print_syntax_error(arena, return_type->line, return_type->column, "unexpected end of file");
+            gm_print_syntax_error_token(arena, return_type, "unexpected end of file");
             return false;
         }
         if (return_type->type != GM_TOKEN_TYPE_IDENTIFIER)
         {
-            gm_print_syntax_error(arena, return_type->line, return_type->column, "expected identifier");
+            gm_print_syntax_error_token(arena, return_type, "expected identifier");
             return false;
         }
         if (strcmp(return_type->string.data, "s32") != 0)
         {
-            gm_print_syntax_error(arena, return_type->line, return_type->column, "invalid type: \"%s\"", return_type->string.data);
+            gm_print_syntax_error_token(arena, return_type, "invalid type: \"%s\"", return_type->string.data);
             return false;
         }
         it->fn.return_type = GM_TYPE_S32;
@@ -134,7 +134,7 @@ static bool gm_ensure_fn_unique_names(gm_arena_t *arena, const gm_ast_node_t *as
             {
                 if (&it2->fn != fn && strcmp(it2->fn.name.data, fn->name.data) == 0)
                 {
-                    gm_print_syntax_error(arena, it2->fn.token_name->line, it2->fn.token_name->column, "function with the name \"%s\" has already been declared", it2->fn.name.data);
+                    gm_print_syntax_error_token(arena, it2->fn.token_name, "function with the name \"%s\" has already been declared", it2->fn.name.data);
                     return false;
                 }
             }

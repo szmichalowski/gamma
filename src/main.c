@@ -38,8 +38,53 @@ int main(const int argc, const char **argv)
         goto failure;
     }
 
+    FILE *src_file = fopen(argv[1], "r");
+    if (src_file == nullptr)
+    {
+        perror("ERROR: main(): fopen()");
+        goto failure;
+    }
+
+    int fd = fileno(src_file);
+    if (fd == -1)
+    {
+        perror("ERROR: main(): fileno()");
+        fclose(src_file);
+        goto failure;
+    }
+
+    struct stat st;
+    if (fstat(fd, &st) == -1)
+    {
+        perror("ERROR: main(): fstat()");
+        fclose(src_file);
+        goto failure;
+    }
+
+    char *source_code = gm_arena_alloc_array(&arena, char, st.st_size + 1);
+    char *source_code_it = source_code;
+    size_t rem = st.st_size;
+    do
+    {
+        const size_t change = fread(source_code_it, 1, rem, src_file);
+        if (change == 0)
+        {
+            perror("ERROR: main(): fread()");
+            fclose(src_file);
+            goto failure;
+        }
+        source_code_it += change;
+        rem -= change;
+    } while (rem > 0);
+
+    if (fclose(src_file) == EOF)
+    {
+        perror("ERROR: main(): fclose()");
+        goto failure;
+    }
+
     const gm_token_t *tokens;
-    if (!gm_lex_file(&arena, argv[1], &tokens))
+    if (!gm_lex_file(&arena, argv[1], source_code, &tokens))
     {
         goto failure;
     }
@@ -102,7 +147,7 @@ int main(const int argc, const char **argv)
         goto failure;
     }
 
-    const int fd = fileno(out_file);
+    fd = fileno(out_file);
     if (fd == -1)
     {
         perror("ERROR: main(): fileno()");

@@ -5,149 +5,178 @@
 #include <stdio.h>
 #include <string.h>
 
-bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
+bool gm_lex_file(gm_arena_t *arena, const char *path, const char *code, const gm_token_t **out)
 {
     static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 12, "gm_lex_file(): token type enum size changed");
-
-    FILE *file = fopen(path, "r");
-    if (file == nullptr)
-    {
-        perror("ERROR: gm_lex_file(): fopen()");
-        return false;
-    }
 
     gm_token_t *result = gm_arena_alloc_single(arena, gm_token_t);
     gm_token_t *it = result;
 
-    int ch;
+    const char *ch = code;
+    const char *line_start = code;
     size_t line = 1;
     size_t column = 1;
-    while ((ch = fgetc(file)) != EOF)
+    while (*ch != 0)
     {
-        if (ch == '\n')
+        if (*ch == '\n')
         {
             ++line;
+            line_start = ch + 1;
             column = 1;
+            ++ch;
             continue;
         }
 
-        if (isspace(ch))
+        if (isspace(*ch))
         {
             ++column;
+            ++ch;
             continue;
         }
 
-        if (ch == '`')
+        if (*ch == '`')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_GRAVE,
                 .line = line,
-                .column = column
+                .column = column,
+                .width = 1,
+                .source_file = path,
+                .line_start = line_start
             };
             ++column;
+            ++ch;
             continue;
         }
 
-        if (ch == '(')
+        if (*ch == '(')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_LEFT_PAREN,
                 .line = line,
-                .column = column
+                .column = column,
+                .width = 1,
+                .source_file = path,
+                .line_start = line_start
             };
             ++column;
+            ++ch;
             continue;
         }
 
-        if (ch == ')')
+        if (*ch == ')')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_RIGHT_PAREN,
                 .line = line,
-                .column = column
+                .column = column,
+                .width = 1,
+                .source_file = path,
+                .line_start = line_start
             };
             ++column;
+            ++ch;
             continue;
         }
 
-        if (ch == '{')
+        if (*ch == '{')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_LEFT_CURLY,
                 .line = line,
-                .column = column
+                .column = column,
+                .width = 1,
+                .source_file = path,
+                .line_start = line_start
             };
             ++column;
+            ++ch;
             continue;
         }
 
-        if (ch == '}')
+        if (*ch == '}')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_RIGHT_CURLY,
                 .line = line,
-                .column = column
+                .column = column,
+                .width = 1,
+                .source_file = path,
+                .line_start = line_start
             };
             ++column;
+            ++ch;
             continue;
         }
 
-        if (ch == '[')
+        if (*ch == '[')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_LEFT_SQUARE,
                 .line = line,
-                .column = column
+                .column = column,
+                .width = 1,
+                .source_file = path,
+                .line_start = line_start
             };
             ++column;
+            ++ch;
             continue;
         }
 
-        if (ch == ']')
+        if (*ch == ']')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_RIGHT_SQUARE,
                 .line = line,
-                .column = column
+                .column = column,
+                .width = 1,
+                .source_file = path,
+                .line_start = line_start
             };
             ++column;
+            ++ch;
             continue;
         }
 
-        if (ch == ';')
+        if (*ch == ';')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_SEMICOLON,
                 .line = line,
-                .column = column
+                .column = column,
+                .width = 1,
+                .source_file = path,
+                .line_start = line_start
             };
             ++column;
+            ++ch;
             continue;
         }
 
-        if (!isalnum(ch) && ch != '_')
+        if (!isalnum(*ch) && *ch != '_')
         {
-            gm_print_syntax_error(arena, line, column, "character \"%c\" (%#x) is not allowed", ch, ch);
+            gm_print_syntax_error(arena, line, column, 1, path, line_start, "character \"%c\" (%#x) is not allowed", *ch, *ch);
             return false;
         }
 
-        if (isdigit(ch))
+        if (isdigit(*ch))
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
             it = it->next;
@@ -155,66 +184,66 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
                 .type = GM_TOKEN_TYPE_NUMBER,
                 .line = line,
                 .column = column,
-                .number = ch - '0'
+                .width = 1,
+                .source_file = path,
+                .line_start = line_start,
+                .number = *ch - '0'
             };
+            ++ch;
 
-            while ((ch = fgetc(file)) != EOF)
+            while (*ch != 0)
             {
-                if (isdigit(ch))
+                if (isdigit(*ch))
                 {
                     it->number *= 10;
-                    it->number += ch - '0';
+                    it->number += *ch - '0';
+                    ++it->width;
                     ++column;
+                    ++ch;
                     continue;
                 }
 
-                if (isalpha(ch))
+                if (isalpha(*ch))
                 {
-                    gm_print_syntax_error(arena, line, column + 1, "character \"%c\" after a digit is not allowed", ch);
+                    gm_print_syntax_error(arena, line, column + 1, 1, path, line_start, "character \"%c\" after a digit is not allowed", *ch);
                     return false;
                 }
 
                 break;
             }
 
-            if (ungetc(ch, file) == EOF)
-            {
-                perror("ERROR: gm_lex_file(): ungetc()");
-                return false;
-            }
-
             ++column;
             continue;
         }
 
-        if (isalpha(ch) || ch == '_')
+        if (isalpha(*ch) || *ch == '_')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
             it = it->next;
             *it = (gm_token_t) {
                 .type = GM_TOKEN_TYPE_IDENTIFIER,
                 .line = line,
-                .column = column
+                .column = column,
+                .width = 1,
+                .source_file = path,
+                .line_start = line_start
             };
             gm_string_init(arena, &it->string);
-            gm_string_append_char(arena, &it->string, ch);
+            gm_string_append_char(arena, &it->string, *ch);
+            ++ch;
 
-            while ((ch = fgetc(file)) != EOF)
+            while (*ch != 0)
             {
-                if (isalpha(ch) || isdigit(ch) || ch == '_')
+                if (isalpha(*ch) || isdigit(*ch) || *ch == '_')
                 {
-                    gm_string_append_char(arena, &it->string, ch);
+                    gm_string_append_char(arena, &it->string, *ch);
+                    ++it->width;
                     ++column;
+                    ++ch;
                     continue;
                 }
 
                 break;
-            }
-
-            if (ungetc(ch, file) == EOF)
-            {
-                perror("ERROR: gm_lex_file(): ungetc()");
-                return false;
             }
 
             if (strcmp(it->string.data, "fn") == 0)
@@ -231,12 +260,6 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
         }
 
         fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
-        return false;
-    }
-
-    if (fclose(file) != 0)
-    {
-        perror("ERROR: gm_lex_file(): fclose()");
         return false;
     }
 

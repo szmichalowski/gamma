@@ -10,12 +10,12 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
 
     if (tokens->type != GM_TOKEN_TYPE_LEFT_CURLY)
     {
-        gm_print_syntax_error(arena, tokens->line, tokens->column, "expected left curly brace");
+        gm_print_syntax_error_token(arena, tokens, "expected left curly brace");
         return false;
     }
     if (tokens->next == nullptr)
     {
-        gm_print_syntax_error(arena, tokens->line, tokens->column, "unexpected end of file");
+        gm_print_syntax_error_token(arena, tokens, "unexpected end of file");
         return false;
     }
     tokens = tokens->next;
@@ -27,7 +27,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
     {
         if (tokens->type != GM_TOKEN_TYPE_RETURN)
         {
-            gm_print_syntax_error(arena, tokens->line, tokens->column, "expected return keyword");
+            gm_print_syntax_error_token(arena, tokens, "expected return keyword");
             return false;
         }
         statements_it->next = gm_arena_alloc_single(arena, gm_statement_t);
@@ -38,7 +38,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
         const gm_token_t *number = tokens->next;
         if (number->type != GM_TOKEN_TYPE_NUMBER)
         {
-            gm_print_syntax_error(arena, number->line, number->column, "expected a number");
+            gm_print_syntax_error_token(arena, number, "expected a number");
             return false;
         }
         statements_it->number = number->number;
@@ -46,21 +46,21 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
 
         if (number->next == nullptr)
         {
-            gm_print_syntax_error(arena, number->line, number->column, "unexpected end of file");
+            gm_print_syntax_error_token(arena, number, "unexpected end of file");
             return false;
         }
 
         const gm_token_t *semicolon = number->next;
         if (semicolon->type != GM_TOKEN_TYPE_SEMICOLON)
         {
-            gm_print_syntax_error(arena, semicolon->line, semicolon->column, "expected a semicolon");
+            gm_print_syntax_error_token(arena, semicolon, "expected a semicolon");
             return false;
         }
 
         tokens = semicolon->next;
         if (tokens == nullptr)
         {
-            gm_print_syntax_error(arena, semicolon->line, semicolon->column, "unexpected end of file");
+            gm_print_syntax_error_token(arena, semicolon, "unexpected end of file");
             return false;
         }
     }
@@ -80,7 +80,7 @@ bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const
     {
         if (returned)
         {
-            gm_print_syntax_error(arena, it->token_return->line, it->token_return->column, "statement after the function has already returned");
+            gm_print_syntax_error_token(arena, it->token_return, "statement after the function has already returned");
             return false;
         }
 
@@ -97,7 +97,7 @@ bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const
 
     if (!returned)
     {
-        gm_print_syntax_error(arena, fn_token->line, fn_token->column, "the function \"%s\" has not returned", fn_token->string.data);
+        gm_print_syntax_error_token(arena, fn_token, "the function \"%s\" has not returned", fn_token->string.data);
         return false;
     }
 
