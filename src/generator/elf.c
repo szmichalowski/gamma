@@ -52,7 +52,7 @@ static uint64_t gm_u64_to_little_endian(const uint64_t value)
     return uni.u64;
 }
 
-static constexpr uint64_t gm_basic_virtual_address = 0x400000;
+static constexpr uint64_t gm_basic_virtual_address = 0;
 
 bool gm_amd64_generate_elf_header64(gm_elf_header64_t *header, const gm_object_file_type_e file_type)
 {
@@ -69,6 +69,7 @@ bool gm_amd64_generate_elf_header64(gm_elf_header64_t *header, const gm_object_f
     switch (file_type)
     {
     case GM_OBJECT_FILE_TYPE_EXECUTABLE:
+    case GM_OBJECT_FILE_TYPE_SHARED_OBJECT:
         header->type = gm_u16_to_little_endian(file_type);
         break;
     default:
@@ -162,7 +163,7 @@ bool gm_amd64_generate_executable_image(gm_arena_t *arena, const gm_ast_node_t *
     }
 
     gm_elf_header64_t *elf = (gm_elf_header64_t *)bytes;
-    if (!gm_amd64_generate_elf_header64(elf, GM_OBJECT_FILE_TYPE_EXECUTABLE))
+    if (!gm_amd64_generate_elf_header64(elf, GM_OBJECT_FILE_TYPE_SHARED_OBJECT))
     {
         return false;
     }
