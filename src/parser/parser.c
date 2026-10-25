@@ -8,7 +8,7 @@
 
 bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t **out)
 {
-    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 11, "gm_parse_tokens(): token type enum size changed");
+    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 12, "gm_parse_tokens(): token type enum size changed");
     static_assert(GM_TYPE_GUARDIAN_ANGEL == 1, "gm_parse_tokens(): type enum size changed");
     static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 1, "gm_parse_tokens(): statement type enum size changed");
 
@@ -76,19 +76,19 @@ bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t 
             return false;
         }
 
-        const gm_token_t *left_square = right_paren->next;
-        if (left_square == nullptr)
+        const gm_token_t *grave = right_paren->next;
+        if (grave == nullptr)
         {
-            gm_print_syntax_error(arena, left_square->line, left_square->column, "unexpected end of file");
+            gm_print_syntax_error(arena, grave->line, grave->column, "unexpected end of file");
             return false;
         }
-        if (left_square->type != GM_TOKEN_TYPE_LEFT_SQUARE)
+        if (grave->type != GM_TOKEN_TYPE_GRAVE)
         {
-            gm_print_syntax_error(arena, left_square->line, left_square->column, "expected left square bracket");
+            gm_print_syntax_error(arena, grave->line, grave->column, "expected left square bracket");
             return false;
         }
 
-        const gm_token_t *return_type = left_square->next;
+        const gm_token_t *return_type = grave->next;
         if (return_type == nullptr)
         {
             gm_print_syntax_error(arena, return_type->line, return_type->column, "unexpected end of file");
@@ -106,19 +106,7 @@ bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t 
         }
         it->fn.return_type = GM_TYPE_S32;
 
-        const gm_token_t *right_square = return_type->next;
-        if (right_square == nullptr)
-        {
-            gm_print_syntax_error(arena, right_square->line, right_square->column, "unexpected end of file");
-            return false;
-        }
-        if (right_square->type != GM_TOKEN_TYPE_RIGHT_SQUARE)
-        {
-            gm_print_syntax_error(arena, right_square->line, right_square->column, "expected right square bracket");
-            return false;
-        }
-
-        if (!gm_parse_fn_body(arena, right_square->next, &it->fn.statements, &tokens))
+        if (!gm_parse_fn_body(arena, return_type->next, &it->fn.statements, &tokens))
         {
             return false;
         }

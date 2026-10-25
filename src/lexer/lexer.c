@@ -7,7 +7,7 @@
 
 bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
 {
-    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 11, "gm_lex_file(): token type enum size changed");
+    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 12, "gm_lex_file(): token type enum size changed");
 
     FILE *file = fopen(path, "r");
     if (file == nullptr)
@@ -39,6 +39,26 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const gm_token_t **out)
 
         if (isspace(ch))
         {
+            ++column;
+            continue;
+        }
+
+        if (ch == '`')
+        {
+            it->next = gm_arena_alloc_single(arena, gm_token_t);
+            if (it->next == nullptr)
+            {
+                fputs("ERROR: gm_lex_file(): allocation error\n", stderr);
+                fclose(file);
+                return false;
+            }
+
+            it = it->next;
+            *it = (gm_token_t) {
+                .type = GM_TOKEN_TYPE_GRAVE,
+                .line = line,
+                .column = column
+            };
             ++column;
             continue;
         }
@@ -323,7 +343,7 @@ void gm_print_tokens(const gm_token_t *tokens)
         return;
     }
 
-    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 11, "gm_lex_print(): token type enum size changed");
+    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 12, "gm_lex_print(): token type enum size changed");
     for (const gm_token_t *it = tokens; it != nullptr; it = it->next)
     {
         printf("%zu:%zu: ", it->line, it->column);
@@ -341,6 +361,9 @@ void gm_print_tokens(const gm_token_t *tokens)
             break;
         case GM_TOKEN_TYPE_RETURN:
             puts("RETURN");
+            break;
+        case GM_TOKEN_TYPE_GRAVE:
+            puts("GRAVE/BACKTICK");
             break;
         case GM_TOKEN_TYPE_LEFT_PAREN:
             puts("LEFT PARENTHESIS");

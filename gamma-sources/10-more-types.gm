@@ -1,0 +1,14 @@
+fn main() `s32
+{
+    x `s32 = 3;
+    y `= 45;
+
+    m `std.pair = 1, "str";
+
+    v1 `Vector4 = 0, 0, screen_width, screen_height;
+    v2 `mut &Vector4 = x: 0, y: 0, width: screen_width, height: screen_height;
+
+    window.resize(`Vector4 0, 0, new_width, new_height`);
+
+    return 0;
+}

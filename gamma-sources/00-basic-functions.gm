@@ -2,17 +2,17 @@
 
 
 
-fn add() [s32]
+fn add() `s32
 {
     return 4;
 }
 
-fn main() [s32]
+fn main() `s32
 {
     return 179;
 }
 
-fn add2() [s32]
+fn add2() `s32
 {
     return 90;
 }
