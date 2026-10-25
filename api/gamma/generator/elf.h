@@ -34,19 +34,6 @@ typedef struct [[gnu::packed]] gm_elf_header64
 } gm_elf_header64_t;
 static_assert(sizeof(gm_elf_header64_t) == 64, "64-bit ELF header must be 64 (0x40) bytes long");
 
-typedef struct [[gnu::packed]] gm_program_header64
-{
-    uint32_t type;
-    uint32_t flags;
-    uint64_t offset;
-    uint64_t virtual_address;
-    uint64_t physical_address;
-    uint64_t file_size;
-    uint64_t memory_size;
-    uint64_t alignment;
-} gm_program_header64_t;
-static_assert(sizeof(gm_program_header64_t) == 56, "64-bit ELF program header must be 56 (0x38) bytes long");
-
 typedef enum gm_object_file_type : uint16_t
 {
     GM_OBJECT_FILE_TYPE_UNKNOWN = 0x00,
@@ -61,9 +48,38 @@ typedef enum gm_object_file_type : uint16_t
     GM_OBJECT_FILE_TYPE_PROCESSOR_HIGH = 0xFFFF
 } gm_object_file_type_e;
 
-bool gm_amd64_generate_elf_header64(gm_elf_header64_t *header, const gm_object_file_type_e file_type);
+typedef struct [[gnu::packed]] gm_program_header64
+{
+    uint32_t type;
+    uint32_t flags;
+    uint64_t offset;
+    uint64_t virtual_address;
+    uint64_t physical_address;
+    uint64_t file_size;
+    uint64_t memory_size;
+    uint64_t alignment;
+} gm_program_header64_t;
+static_assert(sizeof(gm_program_header64_t) == 56, "64-bit ELF program header must be 56 (0x38) bytes long");
 
-void gm_amd64_generate_program_header64(gm_program_header64_t *header, const uint64_t code_size);
+typedef struct [[gnu::packed]] gm_section_header64
+{
+    uint32_t name;
+    uint32_t type;
+    uint64_t flags;
+    uint64_t virtual_address;
+    uint64_t offset;
+    uint64_t size;
+    uint32_t link;
+    uint32_t info;
+    uint64_t alignment;
+    uint64_t entry_size;
+} gm_section_header64_t;
+static_assert(sizeof(gm_section_header64_t) == 64, "64-bit ELF section header must be 64 (0x40) bytes long");
+
+bool gm_amd64_generate_elf_header64(gm_elf_header64_t *header, const gm_object_file_type_e file_type);
+void gm_amd64_generate_program_header64(gm_program_header64_t *header, uint64_t code_size);
+void gm_amd64_generate_section_header64_text(gm_section_header64_t *header, uint64_t code_size);
+void gm_amd64_generate_section_header64_strings_table(gm_section_header64_t *header, uint64_t code_size);
 
 bool gm_amd64_generate_executable_image(gm_arena_t *arena, const gm_ast_node_t *ast_tree, const uint8_t **binary, size_t *binary_size);
 
