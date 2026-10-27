@@ -76,10 +76,26 @@ typedef struct [[gnu::packed]] gm_section_header64
 } gm_section_header64_t;
 static_assert(sizeof(gm_section_header64_t) == 64, "64-bit ELF section header must be 64 (0x40) bytes long");
 
+typedef struct [[gnu::packed]] gm_symbol_table64_entry
+{
+    uint32_t name;
+    uint8_t info;
+    uint8_t other;
+    uint16_t section_header_index;
+    uint64_t value;
+    uint64_t size;
+} gm_symbol_table64_entry_t;
+static_assert(sizeof(gm_symbol_table64_entry_t) == 24, "64-bit ELF symbol table entry must be 24 (0x18) bytes long");
+
 bool gm_amd64_generate_elf_header64(gm_elf_header64_t *header, const gm_object_file_type_e file_type);
 void gm_amd64_generate_program_header64(gm_program_header64_t *header, uint64_t code_size);
+
 void gm_amd64_generate_section_header64_text(gm_section_header64_t *header, uint64_t code_size);
-void gm_amd64_generate_section_header64_strings_table(gm_section_header64_t *header, uint64_t code_size);
+void gm_amd64_generate_section_header64_sh_strings_table(gm_section_header64_t *header, uint64_t code_size);
+void gm_amd64_generate_section_header64_symbol_table(gm_section_header64_t *header, const gm_symbol_table64_entry_t *first_symtab_entry);
+void gm_amd64_generate_section_header64_strings_table(gm_section_header64_t *header, uint64_t code_size, uint64_t str_size);
+
+void gm_amd64_generate_symbol_table64(gm_symbol_table64_entry_t *table, const gm_ast_node_t *ast_tree);
 
 bool gm_amd64_generate_executable_image(gm_arena_t *arena, const gm_ast_node_t *ast_tree, const uint8_t **binary, size_t *binary_size);
 

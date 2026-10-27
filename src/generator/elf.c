@@ -1,4 +1,5 @@
 #include <gamma/generator/elf.h>
+#include <gamma/string/string.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -87,7 +88,7 @@ bool gm_amd64_generate_elf_header64(gm_elf_header64_t *header, const gm_object_f
     header->program_header_entry_size = gm_u16_to_little_endian(sizeof(gm_program_header64_t));
     header->program_header_entry_count = gm_u16_to_little_endian(1);
     header->section_header_entry_size = gm_u16_to_little_endian(sizeof(gm_section_header64_t));
-    header->section_header_entry_count = gm_u16_to_little_endian(0x03);
+    header->section_header_entry_count = gm_u16_to_little_endian(0x05);
     header->section_header_entry_index = gm_u16_to_little_endian(0x02);
 
     return true;
@@ -122,19 +123,33 @@ void gm_amd64_generate_section_header64_text(gm_section_header64_t *header, cons
     header->alignment = gm_u64_to_little_endian(16);
 }
 
-void gm_amd64_generate_section_header64_strings_table(gm_section_header64_t *header, const uint64_t code_size)
+void gm_amd64_generate_section_header64_sh_strings_table(gm_section_header64_t *header, const uint64_t code_size)
 {
     header->name = gm_u32_to_little_endian(0x07);
     header->type = gm_u32_to_little_endian(0x03); // String table
     header->flags = gm_u64_to_little_endian(0x00);
     header->virtual_address = gm_u64_to_little_endian(0x00);
     header->offset = gm_u64_to_little_endian(sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + code_size);
-    header->size = 17;
+    header->size = 33;
     header->alignment = gm_u64_to_little_endian(1);
 }
 
-static constexpr size_t gm_strings_table_size = 24;
-static constexpr uint8_t gm_strings_table[gm_strings_table_size] = "\0.text\0.shstrtab\0";
+static constexpr size_t gm_strings_sections_size = 40;
+static constexpr uint8_t gm_strings_sections[gm_strings_sections_size] = "\0.text\0.shstrtab\0.symtab\0.strtab\0";
+
+void gm_amd64_generate_section_header64_symbol_table(gm_section_header64_t *header, const gm_symbol_table64_entry_t *first_symtab_entry)
+{
+    header->name = gm_u32_to_little_endian(0x11);
+    header->type = gm_u32_to_little_endian(0x02); // Symbol table
+    header->flags = gm_u64_to_little_endian(0x00);
+    header->virtual_address = gm_u64_to_little_endian(0x00);
+    header->offset = gm_u64_to_little_endian((uint64_t)first_symtab_entry);
+    header->size = 5 * sizeof(gm_symbol_table64_entry_t);
+    header->link = gm_u32_to_little_endian(4);
+    header->info = gm_u32_to_little_endian(1);
+    header->alignment = gm_u64_to_little_endian(8);
+    header->entry_size = sizeof(gm_symbol_table64_entry_t);
+}
 
 static constexpr size_t gm_preamble_size = 14;
 static constexpr uint8_t gm_preamble[gm_preamble_size] = {
@@ -146,9 +161,81 @@ static constexpr uint8_t gm_preamble[gm_preamble_size] = {
 static constexpr size_t gm_preamble_call_main_offset = 1;
 static constexpr size_t gm_preamble_after_call_size = 9;
 
+void gm_amd64_generate_symbol_table64(gm_symbol_table64_entry_t *table, const gm_ast_node_t *ast_tree)
+{
+    static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_amd64_generate_executable_image(): AST node type enum size changed");
+
+    // Zeroed out by memory arena
+    // *table = (gm_symbol_table64_entry_t) { 0 };
+
+    gm_symbol_table64_entry_t *preamble = table + 1;
+    preamble->name = gm_u32_to_little_endian(1);
+    preamble->info = 16 | 2; // GLOBAL | FUNC
+    preamble->other = 0; // Default visibility
+    preamble->section_header_index = 1;
+    preamble->value = gm_u32_to_little_endian(sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t));
+    preamble->size = gm_preamble_size;
+
+    gm_symbol_table64_entry_t *table_entry = preamble + 1;
+    // Right after _start
+    uint32_t name = 8;
+    uint64_t value = sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + gm_preamble_size;
+    for (const gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
+    {
+        if (it->type != GM_AST_NODE_TYPE_FN)
+        {
+            continue;
+        }
+
+        table_entry->name = name;
+        table_entry->info = 16 | 2; // GLOBAL | FUNC
+        table_entry->other = 0; // Default visibility
+        table_entry->section_header_index = 1;
+        table_entry->value = value;
+        table_entry->size = it->fn.binary_instructions_size;
+
+        ++table_entry;
+        name += it->fn.name.size + 1;
+        value += it->fn.binary_instructions_size;
+    }
+}
+
+void gm_amd64_generate_section_header64_strings_table(gm_section_header64_t *header, const uint64_t code_size, const uint64_t str_size)
+{
+    header->name = gm_u32_to_little_endian(0x19);
+    header->type = gm_u32_to_little_endian(0x03); // String table
+    header->flags = gm_u64_to_little_endian(0x00);
+    header->virtual_address = gm_u64_to_little_endian(0x00);
+    header->offset = gm_u64_to_little_endian(sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + code_size + gm_strings_sections_size);
+    header->size = str_size;
+    header->link = gm_u32_to_little_endian(0);
+    header->info = gm_u32_to_little_endian(0);
+    header->alignment = gm_u64_to_little_endian(1);
+    header->entry_size = 0;
+}
+
 bool gm_amd64_generate_executable_image(gm_arena_t *arena, const gm_ast_node_t *ast_tree, const uint8_t **binary, size_t *binary_size)
 {
     static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_amd64_generate_executable_image(): AST node type enum size changed");
+
+    size_t num_funcs = 0;
+    gm_string_t strings_symtab;
+    gm_string_init(arena, &strings_symtab);
+    gm_string_append_char(arena, &strings_symtab, 0);
+    gm_string_append_strlit(arena, &strings_symtab, "_start");
+    gm_string_append_char(arena, &strings_symtab, 0);
+    for (const gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
+    {
+        if (it->type != GM_AST_NODE_TYPE_FN)
+        {
+            continue;
+        }
+
+        ++num_funcs;
+        gm_string_append_string(arena, &strings_symtab, it->fn.name);
+        gm_string_append_char(arena, &strings_symtab, 0);
+    }
+    const size_t strings_symtab_size = (strings_symtab.size + 7) & ~7;
 
     size_t alloc_size = sizeof(gm_elf_header64_t) + sizeof(gm_program_header64_t) + gm_preamble_size;
     uint8_t *bytes = gm_arena_alloc(arena, alloc_size);
@@ -200,19 +287,33 @@ bool gm_amd64_generate_executable_image(gm_arena_t *arena, const gm_ast_node_t *
     preamble_call_main[2] = (main_offset_le >> 16) & 0xFF;
     preamble_call_main[3] = (main_offset_le >> 24) & 0xFF;
 
-    const size_t new_size = alloc_size + gm_strings_table_size + 3 * sizeof(gm_section_header64_t);
+    const size_t new_size = alloc_size + gm_strings_sections_size + strings_symtab_size + (num_funcs + 2) * sizeof(gm_symbol_table64_entry_t) + 5 * sizeof(gm_section_header64_t);
     bytes = gm_arena_realloc(arena, bytes, alloc_size, new_size);
 
     uint8_t *strings = bytes + alloc_size;
-    memcpy(strings, gm_strings_table, gm_strings_table_size);
+    memcpy(strings, gm_strings_sections, gm_strings_sections_size);
 
-    gm_section_header64_t *text_header = (gm_section_header64_t *)(strings + gm_strings_table_size + sizeof(gm_section_header64_t));
-    gm_amd64_generate_section_header64_text(text_header, alloc_size - sizeof(gm_elf_header64_t) - sizeof(gm_program_header64_t));
+    uint8_t *strtab = strings + gm_strings_sections_size;
+    memcpy(strtab, strings_symtab.data, strings_symtab_size);
+
+    gm_symbol_table64_entry_t *first_symtab_entry = (gm_symbol_table64_entry_t *)(strtab + strings_symtab_size);
+    gm_amd64_generate_symbol_table64(first_symtab_entry, ast_tree);
+
+    const uint64_t code_size = alloc_size - sizeof(gm_elf_header64_t) - sizeof(gm_program_header64_t);
+
+    gm_section_header64_t *text_header = (gm_section_header64_t *)(first_symtab_entry + num_funcs + 2) + 1;
+    gm_amd64_generate_section_header64_text(text_header, code_size);
 
     gm_section_header64_t *strings_header = text_header + 1;
-    gm_amd64_generate_section_header64_strings_table(strings_header, alloc_size - sizeof(gm_elf_header64_t) - sizeof(gm_program_header64_t));
+    gm_amd64_generate_section_header64_sh_strings_table(strings_header, code_size);
 
-    elf->section_header_offset = (uint64_t)alloc_size + (uint64_t)gm_strings_table_size;
+    gm_section_header64_t *symtab_header = strings_header + 1;
+    gm_amd64_generate_section_header64_symbol_table(symtab_header, (gm_symbol_table64_entry_t *)((uint8_t *)first_symtab_entry - bytes));
+
+    gm_section_header64_t *strings_table = symtab_header + 1;
+    gm_amd64_generate_section_header64_strings_table(strings_table, code_size, strings_symtab.size);
+
+    elf->section_header_offset = (uint64_t)alloc_size + (uint64_t)gm_strings_sections_size + strings_symtab_size + (num_funcs + 2) * 24;
     alloc_size = new_size;
 
     *binary = bytes;
