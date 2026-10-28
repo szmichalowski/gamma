@@ -10,7 +10,7 @@ bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t 
 {
     static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 12, "gm_parse_tokens(): token type enum size changed");
     static_assert(GM_TYPE_GUARDIAN_ANGEL == 1, "gm_parse_tokens(): type enum size changed");
-    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 1, "gm_parse_tokens(): statement type enum size changed");
+    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_parse_tokens(): statement type enum size changed");
 
     // gm_arena_alloc_single() zeroes out allocated memory on success, so result-<next is a nullptr
     gm_ast_node_t *result = gm_arena_alloc_single(arena, gm_ast_node_t);
@@ -104,20 +104,6 @@ bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t 
 
     *out = result->next;
     return true;
-}
-
-static const char *gm_type_to_string(const gm_type_e type)
-{
-    static_assert(GM_TYPE_GUARDIAN_ANGEL == 1, "gm_type_to_string(): type enum size changed");
-
-    switch (type)
-    {
-    case GM_TYPE_S32:
-        return "s32";
-    default:
-        fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
-        return "<UNREACHABLE>";
-    }
 }
 
 static bool gm_ensure_fn_unique_names(gm_arena_t *arena, const gm_ast_node_t *ast_tree)

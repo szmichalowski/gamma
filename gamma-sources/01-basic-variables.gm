@@ -1,0 +1,7 @@
+fn main() `s32
+{
+    a `s32;
+    b `s32;
+
+    return 179;
+}

@@ -5,13 +5,6 @@
 #include <gamma/parser/statement.h>
 #include <gamma/string/string.h>
 
-typedef enum gm_type
-{
-    GM_TYPE_S32,
-
-    GM_TYPE_GUARDIAN_ANGEL
-} gm_type_e;
-
 typedef enum gm_ast_node_type
 {
     GM_AST_NODE_TYPE_FN,

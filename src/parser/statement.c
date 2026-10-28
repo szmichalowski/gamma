@@ -1,12 +1,14 @@
+#include "gamma/lexer/lexer.h"
 #include <gamma/parser/statement.h>
 #include <gamma/utils/print.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <string.h>
 
 bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_t **statements, const gm_token_t **out)
 {
     static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 12, "gm_parse_fn_body(): token type enum size changed");
-    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 1, "gm_parse_fn_body(): statement type enum size changed");
+    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_parse_fn_body(): statement type enum size changed");
 
     if (tokens->type != GM_TOKEN_TYPE_LEFT_CURLY)
     {
@@ -25,42 +27,101 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
 
     while (tokens->type != GM_TOKEN_TYPE_RIGHT_CURLY)
     {
-        if (tokens->type != GM_TOKEN_TYPE_RETURN)
+        if (tokens->type == GM_TOKEN_TYPE_RETURN)
         {
-            gm_print_syntax_error_token(arena, tokens, "expected return keyword");
+            statements_it->next = gm_arena_alloc_single(arena, gm_statement_t);
+            statements_it = statements_it->next;
+            statements_it->type = GM_STATEMENT_TYPE_RETURN;
+            statements_it->ret.token_return = tokens;
+
+            const gm_token_t *number = tokens->next;
+            if (number->type != GM_TOKEN_TYPE_NUMBER)
+            {
+                gm_print_syntax_error_token(arena, number, "expected a number");
+                return false;
+            }
+            statements_it->ret.number = number->number;
+            statements_it->ret.token_number = number;
+            if (number->next == nullptr)
+            {
+                gm_print_syntax_error_token(arena, number, "unexpected end of file");
+                return false;
+            }
+
+            const gm_token_t *semicolon = number->next;
+            if (semicolon->type != GM_TOKEN_TYPE_SEMICOLON)
+            {
+                gm_print_syntax_error_token(arena, semicolon, "expected a semicolon");
+                return false;
+            }
+
+            tokens = semicolon->next;
+            if (tokens == nullptr)
+            {
+                gm_print_syntax_error_token(arena, semicolon, "unexpected end of file");
+                return false;
+            }
+        }
+        else if (tokens->type == GM_TOKEN_TYPE_IDENTIFIER)
+        {
+            statements_it->next = gm_arena_alloc_single(arena, gm_statement_t);
+            statements_it = statements_it->next;
+            statements_it->type = GM_STATEMENT_TYPE_VAR_DECL;
+            statements_it->var_decl.name = tokens->string;
+            statements_it->var_decl.token_name = tokens;
+
+            const gm_token_t *grave = tokens->next;
+            if (grave->type != GM_TOKEN_TYPE_GRAVE)
+            {
+                gm_print_syntax_error_token(arena, grave, "expected grave/backtick");
+                return false;
+            }
+            if (grave->next == nullptr)
+            {
+                gm_print_syntax_error_token(arena, grave, "unexpected end of file");
+                return false;
+            }
+
+            const gm_token_t *type = grave->next;
+            if (type->type != GM_TOKEN_TYPE_IDENTIFIER)
+            {
+                gm_print_syntax_error_token(arena, grave, "expected identifier");
+                return false;
+            }
+            if (strcmp(type->string.data, "s32") != 0)
+            {
+                gm_print_syntax_error_token(arena, type, "invalid type: \"%s\"", type->string.data);
+                return false;
+            }
+            statements_it->var_decl.type = GM_TYPE_S32;
+            if (type->next == nullptr)
+            {
+                gm_print_syntax_error_token(arena, grave, "unexpected end of file");
+                return false;
+            }
+
+            const gm_token_t *semicolon = type->next;
+            if (semicolon->type != GM_TOKEN_TYPE_SEMICOLON)
+            {
+                gm_print_syntax_error_token(arena, semicolon, "expected a semicolon");
+                return false;
+            }
+
+            tokens = semicolon->next;
+            if (tokens == nullptr)
+            {
+                gm_print_syntax_error_token(arena, semicolon, "unexpected end of file");
+                return false;
+            }
+        }
+        else if (tokens->type == GM_TOKEN_TYPE_SEMICOLON)
+        {
+            gm_print_syntax_error_token(arena, tokens, "trailing semicolons not allowed");
             return false;
         }
-        statements_it->next = gm_arena_alloc_single(arena, gm_statement_t);
-        statements_it = statements_it->next;
-        statements_it->type = GM_STATEMENT_TYPE_RETURN;
-        statements_it->token_return = tokens;
-
-        const gm_token_t *number = tokens->next;
-        if (number->type != GM_TOKEN_TYPE_NUMBER)
+        else
         {
-            gm_print_syntax_error_token(arena, number, "expected a number");
-            return false;
-        }
-        statements_it->number = number->number;
-        statements_it->token_number = number;
-
-        if (number->next == nullptr)
-        {
-            gm_print_syntax_error_token(arena, number, "unexpected end of file");
-            return false;
-        }
-
-        const gm_token_t *semicolon = number->next;
-        if (semicolon->type != GM_TOKEN_TYPE_SEMICOLON)
-        {
-            gm_print_syntax_error_token(arena, semicolon, "expected a semicolon");
-            return false;
-        }
-
-        tokens = semicolon->next;
-        if (tokens == nullptr)
-        {
-            gm_print_syntax_error_token(arena, semicolon, "unexpected end of file");
+            gm_print_syntax_error_token(arena, tokens, "unexpected token");
             return false;
         }
     }
@@ -72,7 +133,11 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
 
 bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const gm_statement_t *statements)
 {
-    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 1, "gm_print_statements(): statement type enum size changed");
+    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_print_statements(): statement type enum size changed");
+
+    gm_arena_checkpoint_t mem_check = gm_arena_checkpoint_begin(arena);
+    const char **var_names = gm_arena_alloc_array(arena, const char *, 1);
+    size_t var_names_size = 1;
 
     bool returned = false;
 
@@ -80,17 +145,33 @@ bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const
     {
         if (returned)
         {
-            gm_print_syntax_error_token(arena, it->token_return, "statement after the function has already returned");
+            gm_print_syntax_error_token(arena, it->ret.token_return, "statement after the function has already returned");
+            gm_arena_checkpoint_end(&mem_check);
             return false;
         }
 
         switch (it->type)
         {
+        case GM_STATEMENT_TYPE_VAR_DECL:
+            for (const char **i = var_names + 1; i < var_names + var_names_size; ++i)
+            {
+                if (strcmp(*i, it->var_decl.name.data) == 0)
+                {
+                    gm_print_syntax_error_token(arena, it->var_decl.token_name, "the name \"%s\" has already been used", it->var_decl.name.data);
+                    gm_arena_checkpoint_end(&mem_check);
+                    return false;
+                }
+            }
+            var_names = gm_arena_realloc_array(arena, const char *, var_names, var_names_size, var_names_size + 1);
+            var_names[var_names_size] = it->var_decl.name.data;
+            ++var_names_size;
+            break;
         case GM_STATEMENT_TYPE_RETURN:
             returned = true;
             break;
         default:
             fprintf(stderr, "\tERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
+            gm_arena_checkpoint_end(&mem_check);
             return false;
         }
     }
@@ -98,10 +179,26 @@ bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const
     if (!returned)
     {
         gm_print_syntax_error_token(arena, fn_token, "the function \"%s\" has not returned", fn_token->string.data);
+        gm_arena_checkpoint_end(&mem_check);
         return false;
     }
 
+    gm_arena_checkpoint_end(&mem_check);
     return true;
+}
+
+const char *gm_type_to_string(const gm_type_e type)
+{
+    static_assert(GM_TYPE_GUARDIAN_ANGEL == 1, "gm_type_to_string(): type enum size changed");
+
+    switch (type)
+    {
+    case GM_TYPE_S32:
+        return "s32";
+    default:
+        fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
+        return "<UNREACHABLE>";
+    }
 }
 
 void gm_print_statements(const gm_statement_t *statements)
@@ -112,13 +209,16 @@ void gm_print_statements(const gm_statement_t *statements)
         return;
     }
 
-    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 1, "gm_print_statements(): statement type enum size changed");
+    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_print_statements(): statement type enum size changed");
     for (const gm_statement_t *it = statements; it != nullptr; it = it->next)
     {
         switch (it->type)
         {
+        case GM_STATEMENT_TYPE_VAR_DECL:
+            printf("\tVARIABLE DECLARATION \"%s\" of type \"%s\"\n", it->var_decl.name.data, gm_type_to_string(it->var_decl.type));
+            break;
         case GM_STATEMENT_TYPE_RETURN:
-            printf("\tRETURN %" PRId32 "\n", it->number);
+            printf("\tRETURN %" PRId32 "\n", it->ret.number);
             break;
         default:
             fprintf(stderr, "\tERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
