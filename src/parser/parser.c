@@ -8,7 +8,7 @@
 
 bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t **out)
 {
-    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 12, "gm_parse_tokens(): token type enum size changed");
+    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 14, "gm_parse_tokens(): token type enum size changed");
     static_assert(GM_TYPE_GUARDIAN_ANGEL == 1, "gm_parse_tokens(): type enum size changed");
     static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_parse_tokens(): statement type enum size changed");
 

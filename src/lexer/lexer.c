@@ -7,7 +7,7 @@
 
 bool gm_lex_file(gm_arena_t *arena, const char *path, const char *code, const gm_token_t **out)
 {
-    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 12, "gm_lex_file(): token type enum size changed");
+    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 14, "gm_lex_file(): token type enum size changed");
 
     gm_token_t *result = gm_arena_alloc_single(arena, gm_token_t);
     gm_token_t *it = result;
@@ -29,6 +29,40 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const char *code, const gm
 
         if (isspace(*ch))
         {
+            ++column;
+            ++ch;
+            continue;
+        }
+
+        if (*ch == '=')
+        {
+            it->next = gm_arena_alloc_single(arena, gm_token_t);
+            it = it->next;
+            *it = (gm_token_t) {
+                .type = GM_TOKEN_TYPE_EQUALS,
+                .line = line,
+                .column = column,
+                .width = 1,
+                .source_file = path,
+                .line_start = line_start
+            };
+            ++column;
+            ++ch;
+            continue;
+        }
+
+        if (*ch == '?')
+        {
+            it->next = gm_arena_alloc_single(arena, gm_token_t);
+            it = it->next;
+            *it = (gm_token_t) {
+                .type = GM_TOKEN_TYPE_QUESTION,
+                .line = line,
+                .column = column,
+                .width = 1,
+                .source_file = path,
+                .line_start = line_start
+            };
             ++column;
             ++ch;
             continue;
@@ -275,7 +309,7 @@ void gm_print_tokens(const gm_token_t *tokens)
         return;
     }
 
-    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 12, "gm_lex_print(): token type enum size changed");
+    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 14, "gm_lex_print(): token type enum size changed");
     for (const gm_token_t *it = tokens; it != nullptr; it = it->next)
     {
         printf("%zu:%zu: ", it->line, it->column);
@@ -293,6 +327,12 @@ void gm_print_tokens(const gm_token_t *tokens)
             break;
         case GM_TOKEN_TYPE_RETURN:
             puts("RETURN");
+            break;
+        case GM_TOKEN_TYPE_EQUALS:
+            puts("EQUALS SIGN");
+            break;
+        case GM_TOKEN_TYPE_QUESTION:
+            puts("QUESTION MARK");
             break;
         case GM_TOKEN_TYPE_GRAVE:
             puts("GRAVE/BACKTICK");

@@ -17,7 +17,6 @@ static bool gm_amd64_generate_fn_body(gm_arena_t *arena, const gm_statement_t *s
         switch (stmt->type)
         {
         case GM_STATEMENT_TYPE_VAR_DECL:
-            stmt = stmt->next;
             break;
         case GM_STATEMENT_TYPE_RETURN:
             instructions_it->next = gm_arena_alloc_single(arena, gm_amd64_instruction_t);

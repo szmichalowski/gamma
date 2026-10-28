@@ -36,6 +36,8 @@ struct gm_statement
             const gm_token_t *token_type;
             gm_string_t name;
             gm_type_e type;
+            int32_t number;
+            bool initialized;
         } var_decl;
 
         // GM_STATEMENT_TYPE_RETURN
