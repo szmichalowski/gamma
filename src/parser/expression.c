@@ -1,7 +1,9 @@
 #include <gamma/parser/expression.h>
+#include <gamma/parser/statement.h>
 #include <gamma/utils/print.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <string.h>
 
 static void gm_squish_expression(gm_expression_node_t *expression)
 {
@@ -42,10 +44,11 @@ static void gm_squish_expression(gm_expression_node_t *expression)
     }
 }
 
-bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_expression_node_t **expression, const gm_token_t **out)
+bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, const gm_statement_t *vars, const size_t vars_size, gm_expression_node_t **expression, const gm_token_t **out)
 {
     static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 18, "gm_parse_expression(): token type enum size changed");
     static_assert(GM_EXPRESSION_NODE_TYPE_GUARDIAN_ANGEL == 5, "gm_parse_expression(): expression node type enum size changed");
+    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_parse_expression(): statement type enum size changed");
 
     bool is_negative = false;
     if (tokens->type == GM_TOKEN_TYPE_MINUS)
@@ -69,7 +72,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_express
             return false;
         }
 
-        if (!gm_parse_expression(arena, tokens->next, &root, &tokens))
+        if (!gm_parse_expression(arena, tokens->next, vars, vars_size, &root, &tokens))
         {
             return false;
         }
@@ -106,6 +109,30 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_express
         root->leaf.number = is_negative ? -tokens->number : tokens->number;
         newest = root;
     }
+    else if (tokens->type == GM_TOKEN_TYPE_IDENTIFIER)
+    {
+        const gm_statement_t *found = nullptr;
+        for (const gm_statement_t *i = vars + vars_size - 1; i >= vars; --i)
+        {
+            if (strcmp(tokens->string.data, i->var_decl.name.data) == 0)
+            {
+                found = i;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            gm_print_syntax_error_token(arena, tokens, "undeclared identifier");
+            return false;
+        }
+
+        root = gm_arena_alloc_single(arena, gm_expression_node_t);
+        root->type = GM_EXPRESSION_NODE_TYPE_LEAF;
+        root->leaf.token_number = tokens;
+        root->leaf.number = is_negative ? -found->var_decl.expression->leaf.number : found->var_decl.expression->leaf.number;
+        newest = root;
+    }
     else
     {
         gm_print_syntax_error_token(arena, tokens, "unexpected token");
@@ -127,7 +154,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_express
             return false;
         }
 
-        if (tokens->next->type != GM_TOKEN_TYPE_NUMBER && tokens->next->type != GM_TOKEN_TYPE_LEFT_PAREN)
+        if (tokens->next->type != GM_TOKEN_TYPE_NUMBER && tokens->next->type != GM_TOKEN_TYPE_IDENTIFIER && tokens->next->type != GM_TOKEN_TYPE_LEFT_PAREN)
         {
             gm_print_syntax_error_token(arena, tokens->next, "unexpected token");
             return false;
@@ -158,6 +185,38 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_express
                 }
                 tokens = tokens->next->next;
             }
+            else if (tokens->next->type == GM_TOKEN_TYPE_IDENTIFIER)
+            {
+                const gm_statement_t *found = nullptr;
+                for (const gm_statement_t *i = vars + vars_size - 1; i >= vars; --i)
+                {
+                    if (strcmp(tokens->next->string.data, i->var_decl.name.data) == 0)
+                    {
+                        found = i;
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    gm_print_syntax_error_token(arena, tokens->next, "undeclared identifier");
+                    return false;
+                }
+
+                gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
+                new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF;
+                new_val->leaf.token_number = tokens->next;
+                new_val->leaf.number = found->var_decl.expression->leaf.number;
+                new_val->parent = new_root;
+                new_root->op.right = newest = new_val;
+
+                if (tokens->next->next == nullptr)
+                {
+                    gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
+                    return false;
+                }
+                tokens = tokens->next->next;
+            }
             else
             {
                 if (tokens->next->next == nullptr)
@@ -165,7 +224,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_express
                     gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
                     return false;
                 }
-                if (!gm_parse_expression(arena, tokens->next->next, &new_root->op.right, &tokens))
+                if (!gm_parse_expression(arena, tokens->next->next, vars, vars_size, &new_root->op.right, &tokens))
                 {
                     return false;
                 }
@@ -217,6 +276,39 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_express
                 }
                 tokens = tokens->next->next;
             }
+            else if (tokens->next->type == GM_TOKEN_TYPE_IDENTIFIER)
+            {
+                const gm_statement_t *found = nullptr;
+                for (const gm_statement_t *i = vars + vars_size - 1; i >= vars; --i)
+                {
+                    if (strcmp(tokens->next->string.data, i->var_decl.name.data) == 0)
+                    {
+                        found = i;
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    gm_print_syntax_error_token(arena, tokens->next, "undeclared identifier");
+                    return false;
+                }
+
+                gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
+                new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF;
+                new_val->leaf.token_number = tokens->next;
+                new_val->leaf.number = found->var_decl.expression->leaf.number;
+                ptr->op.right = new_val;
+                new_val->parent = ptr;
+                newest = new_val;
+
+                if (tokens->next->next == nullptr)
+                {
+                    gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
+                    return false;
+                }
+                tokens = tokens->next->next;
+            }
             else
             {
                 if (tokens->next->next == nullptr)
@@ -224,7 +316,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_express
                     gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
                     return false;
                 }
-                if (!gm_parse_expression(arena, tokens->next->next, &ptr->op.right, &tokens))
+                if (!gm_parse_expression(arena, tokens->next->next, vars, vars_size, &ptr->op.right, &tokens))
                 {
                     return false;
                 }

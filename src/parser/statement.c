@@ -1,4 +1,4 @@
-#include "gamma/parser/expression.h"
+#include <gamma/parser/expression.h>
 #include <gamma/parser/statement.h>
 #include <gamma/utils/print.h>
 #include <inttypes.h>
@@ -22,6 +22,10 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
     }
     tokens = tokens->next;
 
+    size_t vars_size = 0;
+    size_t vars_cap = 16;
+    gm_statement_t *vars = gm_arena_alloc_array(arena, gm_statement_t, vars_cap);
+
     gm_statement_t *statements_result = gm_arena_alloc_single(arena, gm_statement_t);
     gm_statement_t *statements_it = statements_result;
 
@@ -40,7 +44,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
                 return false;
             }
 
-            if (!gm_parse_expression(arena, tokens->next, &statements_it->ret.expression, &tokens))
+            if (!gm_parse_expression(arena, tokens->next, vars, vars_size, &statements_it->ret.expression, &tokens))
             {
                 return false;
             }
@@ -147,7 +151,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
             }
 
             const gm_token_t *semicolon;
-            if (!gm_parse_expression(arena, equals->next, &statements_it->var_decl.expression, &semicolon))
+            if (!gm_parse_expression(arena, equals->next, vars, vars_size, &statements_it->var_decl.expression, &semicolon))
             {
                 return false;
             }
@@ -163,6 +167,13 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
                 gm_print_syntax_error_token(arena, semicolon, "unexpected end of file");
                 return false;
             }
+
+            if (vars_size >= vars_cap)
+            {
+                vars = gm_arena_realloc_array(arena, gm_statement_t, vars, vars_cap, vars_cap * 3);
+                vars_cap *= 3;
+            }
+            vars[vars_size++] = *statements_it;
         }
         else if (tokens->type == GM_TOKEN_TYPE_SEMICOLON)
         {
