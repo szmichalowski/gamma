@@ -1,4 +1,4 @@
-#include "gamma/lexer/lexer.h"
+#include "gamma/parser/expression.h"
 #include <gamma/parser/statement.h>
 #include <gamma/utils/print.h>
 #include <inttypes.h>
@@ -7,7 +7,7 @@
 
 bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_t **statements, const gm_token_t **out)
 {
-    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 14, "gm_parse_fn_body(): token type enum size changed");
+    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 18, "gm_parse_fn_body(): token type enum size changed");
     static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_parse_fn_body(): statement type enum size changed");
 
     if (tokens->type != GM_TOKEN_TYPE_LEFT_CURLY)
@@ -102,7 +102,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
 
             if (type->next->type == GM_TOKEN_TYPE_SEMICOLON)
             {
-                statements_it->var_decl.number = 0;
+                statements_it->var_decl.expression = gm_expression_zero(arena);
                 statements_it->var_decl.initialized = true;
                 tokens = type->next->next;
                 if (tokens == nullptr)
@@ -149,33 +149,23 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
                 continue;
             }
 
-            if (equals->next->type == GM_TOKEN_TYPE_NUMBER)
+            const gm_token_t *semicolon;
+            if (!gm_parse_expression(arena, equals->next, &statements_it->var_decl.expression, &semicolon))
             {
-                const gm_token_t *number = equals->next;
-                if (number->next == nullptr)
-                {
-                    gm_print_syntax_error_token(arena, number, "unexpected end of file");
-                    return false;
-                }
-                const gm_token_t *semicolon = number->next;
-                if (semicolon->type != GM_TOKEN_TYPE_SEMICOLON)
-                {
-                    gm_print_syntax_error_token(arena, semicolon, "expected semicolon");
-                    return false;
-                }
-                statements_it->var_decl.number = number->number;
-                statements_it->var_decl.initialized = true;
-                tokens = semicolon->next;
-                if (tokens == nullptr)
-                {
-                    gm_print_syntax_error_token(arena, semicolon, "unexpected end of file");
-                    return false;
-                }
-                continue;
+                return false;
             }
-
-            gm_print_syntax_error_token(arena, equals->next, "unexpected token");
-            return false;
+            if (semicolon->type != GM_TOKEN_TYPE_SEMICOLON)
+            {
+                gm_print_syntax_error_token(arena, semicolon, "expected semicolon");
+                return false;
+            }
+            statements_it->var_decl.initialized = true;
+            tokens = semicolon->next;
+            if (tokens == nullptr)
+            {
+                gm_print_syntax_error_token(arena, semicolon, "unexpected end of file");
+                return false;
+            }
         }
         else if (tokens->type == GM_TOKEN_TYPE_SEMICOLON)
         {
@@ -250,20 +240,6 @@ bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const
     return true;
 }
 
-const char *gm_type_to_string(const gm_type_e type)
-{
-    static_assert(GM_TYPE_GUARDIAN_ANGEL == 1, "gm_type_to_string(): type enum size changed");
-
-    switch (type)
-    {
-    case GM_TYPE_S32:
-        return "s32";
-    default:
-        fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
-        return "<UNREACHABLE>";
-    }
-}
-
 void gm_print_statements(const gm_statement_t *statements)
 {
     if (statements == nullptr)
@@ -281,7 +257,8 @@ void gm_print_statements(const gm_statement_t *statements)
             printf("\tVARIABLE DECLARATION \"%s\" of type \"%s\" ", it->var_decl.name.data, gm_type_to_string(it->var_decl.type));
             if (it->var_decl.initialized)
             {
-                printf("with value %" PRId32 "\n", it->var_decl.number);
+                puts("initialized with expression:");
+                gm_print_expression(it->var_decl.expression, 10);
             }
             else
             {

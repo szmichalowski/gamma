@@ -19,6 +19,8 @@ target_sources(gamma
 
         src/parser/parser.c
         src/parser/statement.c
+        src/parser/expression.c
+        src/parser/type.c
 
         src/generator/generator.c
         src/generator/elf.c
