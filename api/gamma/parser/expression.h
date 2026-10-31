@@ -20,6 +20,8 @@ typedef enum gm_expression_node_type
 typedef struct gm_expression_node gm_expression_node_t;
 struct gm_expression_node
 {
+    gm_expression_node_t *parent;
+
     gm_expression_node_type_e type;
     union
     {
@@ -32,7 +34,6 @@ struct gm_expression_node
             gm_expression_node_t *left;
             gm_expression_node_t *right;
             const gm_token_t *token_op;
-            bool in_paren;
         } op;
 
         // GM_EXPRESSION_NODE_TYPE_LEAF
