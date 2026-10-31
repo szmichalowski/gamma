@@ -65,6 +65,22 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
         }
         else if (tokens->type == GM_TOKEN_TYPE_IDENTIFIER)
         {
+            const gm_statement_t *found = nullptr;
+            for (const gm_statement_t *i = vars + vars_size - 1; i >= vars; --i)
+            {
+                if (strcmp(tokens->string.data, i->var_decl.name.data) == 0)
+                {
+                    found = i;
+                    break;
+                }
+            }
+
+            if (found)
+            {
+                gm_print_syntax_error_token(arena, tokens, "variable with this name has already been declared");
+                return false;
+            }
+
             statements_it->next = gm_arena_alloc_single(arena, gm_statement_t);
             statements_it = statements_it->next;
             statements_it->type = GM_STATEMENT_TYPE_VAR_DECL;
