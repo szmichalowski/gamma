@@ -1,3 +1,4 @@
+#include "gamma/parser/expression.h"
 #include <gamma/parser/statement.h>
 #include <gamma/utils/print.h>
 #include <inttypes.h>
@@ -33,21 +34,18 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
             statements_it->type = GM_STATEMENT_TYPE_RETURN;
             statements_it->ret.token_return = tokens;
 
-            const gm_token_t *number = tokens->next;
-            if (number->type != GM_TOKEN_TYPE_NUMBER)
+            if (tokens->next == nullptr)
             {
-                gm_print_syntax_error_token(arena, number, "expected a number");
-                return false;
-            }
-            statements_it->ret.number = number->number;
-            statements_it->ret.token_number = number;
-            if (number->next == nullptr)
-            {
-                gm_print_syntax_error_token(arena, number, "unexpected end of file");
+                gm_print_syntax_error_token(arena, tokens, "unexpected end of file");
                 return false;
             }
 
-            const gm_token_t *semicolon = number->next;
+            if (!gm_parse_expression(arena, tokens->next, &statements_it->ret.expression, &tokens))
+            {
+                return false;
+            }
+
+            const gm_token_t *semicolon = tokens;
             if (semicolon->type != GM_TOKEN_TYPE_SEMICOLON)
             {
                 gm_print_syntax_error_token(arena, semicolon, "expected a semicolon");
@@ -265,7 +263,8 @@ void gm_print_statements(const gm_statement_t *statements)
             }
             break;
         case GM_STATEMENT_TYPE_RETURN:
-            printf("\tRETURN %" PRId32 "\n", it->ret.number);
+            puts("\tRETURN:");
+            gm_print_expression(it->ret.expression, 10);
             break;
         default:
             fprintf(stderr, "\tERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);

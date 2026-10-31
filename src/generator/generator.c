@@ -1,5 +1,5 @@
-#include "gamma/parser/statement.h"
 #include <gamma/generator/generator.h>
+#include <gamma/utils/print.h>
 #include <inttypes.h>
 #include <stdio.h>
 
@@ -19,11 +19,17 @@ static bool gm_amd64_generate_fn_body(gm_arena_t *arena, const gm_statement_t *s
         case GM_STATEMENT_TYPE_VAR_DECL:
             break;
         case GM_STATEMENT_TYPE_RETURN:
+            if (stmt->ret.expression->type != GM_EXPRESSION_NODE_TYPE_LEAF)
+            {
+                gm_print_syntax_error_token(arena, stmt->ret.token_return, "currently a return statement has to return a single number possible to get evaluated at compile time - no advanced expressions");
+                return false;
+            }
+
             instructions_it->next = gm_arena_alloc_single(arena, gm_amd64_instruction_t);
             instructions_it = instructions_it->next;
             instructions_it->type = GM_AMD64_INSTRUCTION_TYPE_MOV_REG_NUM;
             instructions_it->register_type = GM_AMD64_REGISTER_TYPE_EAX;
-            instructions_it->number = stmt->ret.number;
+            instructions_it->number = stmt->ret.expression->leaf.number;
 
             instructions_it->next = gm_arena_alloc_single(arena, gm_amd64_instruction_t);
             instructions_it = instructions_it->next;

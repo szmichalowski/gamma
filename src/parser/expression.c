@@ -3,6 +3,45 @@
 #include <inttypes.h>
 #include <stdio.h>
 
+static void gm_squish_expression(gm_expression_node_t *expression)
+{
+    static_assert(GM_EXPRESSION_NODE_TYPE_GUARDIAN_ANGEL == 5, "gm_parse_expression(): expression node type enum size changed");
+
+    if (expression->type == GM_EXPRESSION_NODE_TYPE_LEAF)
+    {
+        return;
+    }
+
+    gm_squish_expression(expression->op.left);
+    gm_squish_expression(expression->op.right);
+
+    if (expression->op.left->type == GM_EXPRESSION_NODE_TYPE_LEAF && expression->op.right->type == GM_EXPRESSION_NODE_TYPE_LEAF)
+    {
+        const int32_t left = expression->op.left->leaf.number;
+        const int32_t right = expression->op.right->leaf.number;
+        expression->leaf.token_number = nullptr;
+        switch (expression->type)
+        {
+        case GM_EXPRESSION_NODE_TYPE_ADDITION:
+            expression->leaf.number = left + right;
+            break;
+        case GM_EXPRESSION_NODE_TYPE_SUBTRACTION:
+            expression->leaf.number = left - right;
+            break;
+        case GM_EXPRESSION_NODE_TYPE_MULTIPLICATION:
+            expression->leaf.number = left * right;
+            break;
+        case GM_EXPRESSION_NODE_TYPE_DIVISION:
+            expression->leaf.number = left / right;
+            break;
+        default:
+            fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
+            return;
+        }
+        expression->type = GM_EXPRESSION_NODE_TYPE_LEAF;
+    }
+}
+
 bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_expression_node_t **expression, const gm_token_t **out)
 {
     static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 18, "gm_parse_expression(): token type enum size changed");
@@ -206,6 +245,8 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_express
             }
         }
     }
+
+    gm_squish_expression(root);
 
     *expression = root;
     *out = tokens;

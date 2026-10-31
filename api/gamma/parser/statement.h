@@ -38,8 +38,7 @@ struct gm_statement
         struct
         {
             const gm_token_t *token_return;
-            const gm_token_t *token_number;
-            int32_t number;
+            gm_expression_node_t *expression;
         } ret;
     };
 };
