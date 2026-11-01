@@ -44,7 +44,7 @@ static void gm_squish_expression(gm_expression_node_t *expression)
     }
 }
 
-bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, const gm_statement_t *vars, const size_t vars_size, gm_expression_node_t **expression, const gm_token_t **out)
+bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_parse_ctx_t *parse_ctx, gm_expression_node_t **expression, const gm_token_t **out)
 {
     static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 18, "gm_parse_expression(): token type enum size changed");
     static_assert(GM_EXPRESSION_NODE_TYPE_GUARDIAN_ANGEL == 5, "gm_parse_expression(): expression node type enum size changed");
@@ -72,7 +72,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, const gm_s
             return false;
         }
 
-        if (!gm_parse_expression(arena, tokens->next, vars, vars_size, &root, &tokens))
+        if (!gm_parse_expression(arena, tokens->next, parse_ctx, &root, &tokens))
         {
             return false;
         }
@@ -111,15 +111,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, const gm_s
     }
     else if (tokens->type == GM_TOKEN_TYPE_IDENTIFIER)
     {
-        const gm_statement_t *found = nullptr;
-        for (const gm_statement_t *i = vars + vars_size - 1; i >= vars; --i)
-        {
-            if (strcmp(tokens->string.data, i->var_decl.name.data) == 0)
-            {
-                found = i;
-                break;
-            }
-        }
+        const gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->string.data);
 
         if (!found)
         {
@@ -187,15 +179,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, const gm_s
             }
             else if (tokens->next->type == GM_TOKEN_TYPE_IDENTIFIER)
             {
-                const gm_statement_t *found = nullptr;
-                for (const gm_statement_t *i = vars + vars_size - 1; i >= vars; --i)
-                {
-                    if (strcmp(tokens->next->string.data, i->var_decl.name.data) == 0)
-                    {
-                        found = i;
-                        break;
-                    }
-                }
+                const gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->next->string.data);
 
                 if (!found)
                 {
@@ -224,7 +208,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, const gm_s
                     gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
                     return false;
                 }
-                if (!gm_parse_expression(arena, tokens->next->next, vars, vars_size, &new_root->op.right, &tokens))
+                if (!gm_parse_expression(arena, tokens->next->next, parse_ctx, &new_root->op.right, &tokens))
                 {
                     return false;
                 }
@@ -278,15 +262,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, const gm_s
             }
             else if (tokens->next->type == GM_TOKEN_TYPE_IDENTIFIER)
             {
-                const gm_statement_t *found = nullptr;
-                for (const gm_statement_t *i = vars + vars_size - 1; i >= vars; --i)
-                {
-                    if (strcmp(tokens->next->string.data, i->var_decl.name.data) == 0)
-                    {
-                        found = i;
-                        break;
-                    }
-                }
+                const gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->next->string.data);
 
                 if (!found)
                 {
@@ -316,7 +292,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, const gm_s
                     gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
                     return false;
                 }
-                if (!gm_parse_expression(arena, tokens->next->next, vars, vars_size, &ptr->op.right, &tokens))
+                if (!gm_parse_expression(arena, tokens->next->next, parse_ctx, &ptr->op.right, &tokens))
                 {
                     return false;
                 }

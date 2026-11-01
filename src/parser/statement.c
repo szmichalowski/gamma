@@ -22,9 +22,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
     }
     tokens = tokens->next;
 
-    size_t vars_size = 0;
-    size_t vars_cap = 16;
-    gm_statement_t *vars = gm_arena_alloc_array(arena, gm_statement_t, vars_cap);
+    gm_fn_parse_ctx_t ctx = gm_fn_parse_ctx_new(arena);
 
     gm_statement_t *statements_result = gm_arena_alloc_single(arena, gm_statement_t);
     gm_statement_t *statements_it = statements_result;
@@ -44,7 +42,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
                 return false;
             }
 
-            if (!gm_parse_expression(arena, tokens->next, vars, vars_size, &statements_it->ret.expression, &tokens))
+            if (!gm_parse_expression(arena, tokens->next, &ctx, &statements_it->ret.expression, &tokens))
             {
                 return false;
             }
@@ -65,15 +63,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
         }
         else if (tokens->type == GM_TOKEN_TYPE_IDENTIFIER)
         {
-            const gm_statement_t *found = nullptr;
-            for (const gm_statement_t *i = vars + vars_size - 1; i >= vars; --i)
-            {
-                if (strcmp(tokens->string.data, i->var_decl.name.data) == 0)
-                {
-                    found = i;
-                    break;
-                }
-            }
+            const gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(&ctx, tokens->string.data);
 
             if (found)
             {
@@ -167,7 +157,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
             }
 
             const gm_token_t *semicolon;
-            if (!gm_parse_expression(arena, equals->next, vars, vars_size, &statements_it->var_decl.expression, &semicolon))
+            if (!gm_parse_expression(arena, equals->next, &ctx, &statements_it->var_decl.expression, &semicolon))
             {
                 return false;
             }
@@ -184,12 +174,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
                 return false;
             }
 
-            if (vars_size >= vars_cap)
-            {
-                vars = gm_arena_realloc_array(arena, gm_statement_t, vars, vars_cap, vars_cap * 3);
-                vars_cap *= 3;
-            }
-            vars[vars_size++] = *statements_it;
+            gm_fn_parse_ctx_add_var_decl(arena, &ctx, statements_it);
         }
         else if (tokens->type == GM_TOKEN_TYPE_SEMICOLON)
         {
@@ -298,4 +283,35 @@ void gm_print_statements(const gm_statement_t *statements)
             return;
         }
     }
+}
+
+gm_fn_parse_ctx_t gm_fn_parse_ctx_new(gm_arena_t *arena)
+{
+    return (gm_fn_parse_ctx_t) {
+        .var_decls = gm_arena_alloc_array(arena, gm_statement_t *, 16),
+        .var_decls_size = 0,
+        .var_decls_cap = 16
+    };
+}
+
+void gm_fn_parse_ctx_add_var_decl(gm_arena_t *arena, gm_fn_parse_ctx_t *ctx, gm_statement_t *decl)
+{
+    if (ctx->var_decls_size >= ctx->var_decls_cap)
+    {
+        ctx->var_decls = gm_arena_realloc_array(arena, gm_statement_t *, ctx->var_decls, ctx->var_decls_cap, ctx->var_decls_cap * 3);
+        ctx->var_decls_cap *= 3;
+    }
+    ctx->var_decls[ctx->var_decls_size++] = decl;
+}
+
+gm_statement_t *gm_fn_parse_ctx_find_var_decl(gm_fn_parse_ctx_t *ctx, const char *var_name)
+{
+    for (gm_statement_t **i = ctx->var_decls; i < ctx->var_decls + ctx->var_decls_size; ++i)
+    {
+        if (strcmp(var_name, (*i)->var_decl.name.data) == 0)
+        {
+            return *i;
+        }
+    }
+    return nullptr;
 }

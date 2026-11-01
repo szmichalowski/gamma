@@ -49,4 +49,16 @@ bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const
 
 void gm_print_statements(const gm_statement_t *statements);
 
+typedef struct gm_fn_parse_ctx
+{
+    gm_statement_t **var_decls;
+    size_t var_decls_size;
+    size_t var_decls_cap;
+} gm_fn_parse_ctx_t;
+
+gm_fn_parse_ctx_t gm_fn_parse_ctx_new(gm_arena_t *arena);
+
+void gm_fn_parse_ctx_add_var_decl(gm_arena_t *arena, gm_fn_parse_ctx_t *ctx, gm_statement_t *decl);
+gm_statement_t *gm_fn_parse_ctx_find_var_decl(gm_fn_parse_ctx_t *ctx, const char *var_name);
+
 #endif // API_PARSER_STATEMENT_H

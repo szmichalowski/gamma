@@ -45,8 +45,8 @@ struct gm_expression_node
     };
 };
 
-typedef struct gm_statement gm_statement_t;
-bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, const gm_statement_t *vars, size_t vars_size, gm_expression_node_t **expression, const gm_token_t **out);
+typedef struct gm_fn_parse_ctx gm_fn_parse_ctx_t;
+bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_parse_ctx_t *parse_ctx, gm_expression_node_t **expression, const gm_token_t **out);
 
 gm_expression_node_t *gm_expression_zero(gm_arena_t *arena);
 
