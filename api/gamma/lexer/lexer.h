@@ -1,8 +1,8 @@
 #ifndef GM_API_LEXER_LEXER_H
 #define GM_API_LEXER_LEXER_H
 
-#include <gamma/arena/arena.h>
-#include <gamma/string/string.h>
+#include <gamma/utils/arena.h>
+#include <gamma/utils/string.h>
 #include <stddef.h>
 #include <stdint.h>
 

@@ -1,8 +1,8 @@
-#include <gamma/arena/arena.h>
 #include <gamma/generator/elf.h>
 #include <gamma/generator/generator.h>
 #include <gamma/lexer/lexer.h>
 #include <gamma/parser/parser.h>
+#include <gamma/utils/arena.h>
 #include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>

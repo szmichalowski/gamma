@@ -1,4 +1,4 @@
-#include <gamma/string/string.h>
+#include <gamma/utils/string.h>
 #include <string.h>
 
 void gm_string_init(gm_arena_t *arena, gm_string_t *string)

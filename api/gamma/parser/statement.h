@@ -1,10 +1,10 @@
 #ifndef API_PARSER_STATEMENT_H
 #define API_PARSER_STATEMENT_H
 
-#include <gamma/arena/arena.h>
 #include <gamma/lexer/lexer.h>
 #include <gamma/parser/expression.h>
 #include <gamma/parser/type.h>
+#include <gamma/utils/arena.h>
 
 typedef enum gm_statement_type
 {

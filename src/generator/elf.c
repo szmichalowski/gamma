@@ -1,5 +1,5 @@
 #include <gamma/generator/elf.h>
-#include <gamma/string/string.h>
+#include <gamma/utils/string.h>
 #include <stdio.h>
 #include <string.h>
 

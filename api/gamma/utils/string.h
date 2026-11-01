@@ -1,7 +1,7 @@
-#ifndef GM_API_STRING_STRING_H
-#define GM_API_STRING_STRING_H
+#ifndef GM_API_UTILS_STRING_H
+#define GM_API_UTILS_STRING_H
 
-#include <gamma/arena/arena.h>
+#include <gamma/utils/arena.h>
 
 typedef struct gm_string
 {
@@ -15,4 +15,4 @@ void gm_string_append_char(gm_arena_t *arena, gm_string_t *string, char ch);
 void gm_string_append_string(gm_arena_t *arena, gm_string_t *string, gm_string_t other);
 void gm_string_append_strlit(gm_arena_t *arena, gm_string_t *string, const char *other);
 
-#endif // GM_API_STRING_STRING_H
+#endif // GM_API_UTILS_STRING_H

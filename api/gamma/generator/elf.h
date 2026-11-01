@@ -1,8 +1,8 @@
 #ifndef GM_API_GENERATOR_ELF_H
 #define GM_API_GENERATOR_ELF_H
 
-#include <gamma/arena/arena.h>
 #include <gamma/parser/parser.h>
+#include <gamma/utils/arena.h>
 #include <stdint.h>
 
 typedef struct [[gnu::packed]] gm_elf_header64

@@ -1,4 +1,4 @@
-#include <gamma/arena/arena.h>
+#include <gamma/utils/arena.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>

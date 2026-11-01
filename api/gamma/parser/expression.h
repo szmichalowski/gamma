@@ -1,8 +1,8 @@
 #ifndef API_PARSER_EXPRESSION_H
 #define API_PARSER_EXPRESSION_H
 
-#include <gamma/arena/arena.h>
 #include <gamma/lexer/lexer.h>
+#include <gamma/utils/arena.h>
 #include <stdint.h>
 
 typedef enum gm_expression_node_type

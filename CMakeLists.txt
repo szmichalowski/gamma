@@ -25,10 +25,8 @@ target_sources(gamma
         src/generator/generator.c
         src/generator/elf.c
 
-        src/arena/arena.c
-
-        src/string/string.c
-
+        src/utils/arena.c
+        src/utils/string.c
         src/utils/print.c
 )
 

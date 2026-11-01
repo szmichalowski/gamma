@@ -1,6 +1,6 @@
-#include <gamma/arena/arena.h>
 #include <gamma/lexer/lexer.h>
 #include <gamma/parser/parser.h>
+#include <gamma/utils/arena.h>
 #include <gamma/utils/print.h>
 #include <inttypes.h>
 #include <stdio.h>

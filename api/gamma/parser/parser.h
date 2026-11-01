@@ -3,7 +3,7 @@
 
 #include <gamma/lexer/lexer.h>
 #include <gamma/parser/statement.h>
-#include <gamma/string/string.h>
+#include <gamma/utils/string.h>
 
 typedef enum gm_ast_node_type
 {

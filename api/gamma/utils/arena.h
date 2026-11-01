@@ -1,5 +1,5 @@
-#ifndef GM_API_ARENA_ARENA_H
-#define GM_API_ARENA_ARENA_H
+#ifndef GM_API_UTILS_ARENA_H
+#define GM_API_UTILS_ARENA_H
 
 #include <setjmp.h>
 #include <stddef.h>
@@ -50,4 +50,4 @@ bool gm_arena_checkpoint_hard_end(gm_arena_checkpoint_t *checkpoint);
 #define gm_arena_realloc_array(arena, T, old_ptr, old_count, new_count) (T *)gm_arena_realloc_aligned_ext((arena), (old_ptr), sizeof(T) * (old_count), sizeof(T) * (new_count), alignof(T), __FILE__, __LINE__)
 #define gm_arena_realloc(arena, old_ptr, old_size, new_size) gm_arena_realloc_aligned_ext((arena), (old_ptr), (old_size), (new_size), alignof(max_align_t), __FILE__, __LINE__)
 
-#endif // GM_API_ARENA_ARENA_H
+#endif // GM_API_UTILS_ARENA_H

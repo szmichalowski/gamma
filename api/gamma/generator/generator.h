@@ -1,8 +1,8 @@
 #ifndef GM_API_GENERATOR_GENERATOR_H
 #define GM_API_GENERATOR_GENERATOR_H
 
-#include <gamma/arena/arena.h>
 #include <gamma/parser/parser.h>
+#include <gamma/utils/arena.h>
 #include <stdint.h>
 
 typedef enum gm_amd64_instruction_type
