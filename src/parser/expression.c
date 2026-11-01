@@ -111,13 +111,13 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
     }
     else if (tokens->type == GM_TOKEN_TYPE_IDENTIFIER)
     {
-        const gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->string.data);
-
+        gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->string.data);
         if (!found)
         {
             gm_print_syntax_error_token(arena, tokens, "undeclared identifier");
             return false;
         }
+        found->var_decl.used = true;
 
         root = gm_arena_alloc_single(arena, gm_expression_node_t);
         root->type = GM_EXPRESSION_NODE_TYPE_LEAF;
@@ -179,13 +179,13 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
             }
             else if (tokens->next->type == GM_TOKEN_TYPE_IDENTIFIER)
             {
-                const gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->next->string.data);
-
+                gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->next->string.data);
                 if (!found)
                 {
                     gm_print_syntax_error_token(arena, tokens->next, "undeclared identifier");
                     return false;
                 }
+                found->var_decl.used = true;
 
                 gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
                 new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF;
@@ -262,13 +262,13 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
             }
             else if (tokens->next->type == GM_TOKEN_TYPE_IDENTIFIER)
             {
-                const gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->next->string.data);
-
+                gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->next->string.data);
                 if (!found)
                 {
                     gm_print_syntax_error_token(arena, tokens->next, "undeclared identifier");
                     return false;
                 }
+                found->var_decl.used = true;
 
                 gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
                 new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF;

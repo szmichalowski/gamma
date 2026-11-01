@@ -197,10 +197,6 @@ bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const
 {
     static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_print_statements(): statement type enum size changed");
 
-    gm_arena_checkpoint_t mem_check = gm_arena_checkpoint_begin(arena);
-    const char **var_names = gm_arena_alloc_array(arena, const char *, 1);
-    size_t var_names_size = 1;
-
     bool returned = false;
 
     for (const gm_statement_t *it = statements; it != nullptr; it = it->next)
@@ -208,32 +204,23 @@ bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const
         if (returned)
         {
             gm_print_syntax_error_token(arena, it->ret.token_return, "statement after the function has already returned");
-            gm_arena_checkpoint_end(&mem_check);
             return false;
         }
 
         switch (it->type)
         {
         case GM_STATEMENT_TYPE_VAR_DECL:
-            for (const char **i = var_names + 1; i < var_names + var_names_size; ++i)
+            if (!it->var_decl.used)
             {
-                if (strcmp(*i, it->var_decl.name.data) == 0)
-                {
-                    gm_print_syntax_error_token(arena, it->var_decl.token_name, "the name \"%s\" has already been used", it->var_decl.name.data);
-                    gm_arena_checkpoint_end(&mem_check);
-                    return false;
-                }
+                gm_print_syntax_error_token(arena, it->var_decl.token_name, "variable declared, but not used");
+                return false;
             }
-            var_names = gm_arena_realloc_array(arena, const char *, var_names, var_names_size, var_names_size + 1);
-            var_names[var_names_size] = it->var_decl.name.data;
-            ++var_names_size;
             break;
         case GM_STATEMENT_TYPE_RETURN:
             returned = true;
             break;
         default:
             fprintf(stderr, "\tERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
-            gm_arena_checkpoint_end(&mem_check);
             return false;
         }
     }
@@ -241,11 +228,9 @@ bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const
     if (!returned)
     {
         gm_print_syntax_error_token(arena, fn_token, "the function \"%s\" has not returned", fn_token->string.data);
-        gm_arena_checkpoint_end(&mem_check);
         return false;
     }
 
-    gm_arena_checkpoint_end(&mem_check);
     return true;
 }
 

@@ -32,6 +32,7 @@ struct gm_statement
             gm_type_e type;
             gm_expression_node_t *expression;
             bool initialized;
+            bool used;
         } var_decl;
 
         // GM_STATEMENT_TYPE_RETURN
