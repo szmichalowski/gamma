@@ -34,6 +34,67 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const char *code, const gm
             continue;
         }
 
+        if (*ch == '~')
+        {
+            if (ch[1] == '~')
+            {
+                if (ch[2] == '~')
+                {
+                    const size_t saved_line = line;
+                    const size_t saved_column = column;
+                    const char *const saved_line_start = line_start;
+                    ch += 3;
+                    while (*ch != 0 && (*ch != '~' || ch[1] != '~' || ch[2] != '~'))
+                    {
+                        if (*ch == '\n')
+                        {
+                            ++line;
+                            line_start = ch + 1;
+                            column = 1;
+                        }
+                        else
+                        {
+                            ++column;
+                        }
+
+                        ++ch;
+                    }
+                    if (*ch != 0)
+                    {
+                        column += 3;
+                        ch += 3;
+                    }
+                    else
+                    {
+                        gm_print_syntax_error(arena, saved_line, saved_column, 3, path, saved_line_start, "multi line comment opened, but not closed");
+                        return false;
+                    }
+                    continue;
+                }
+                else
+                {
+                    ch += 2;
+                    while (*ch != 0 && *ch != '\n')
+                    {
+                        ++ch;
+                    }
+                    if (*ch == '\n')
+                    {
+                        ++ch;
+                        ++line;
+                        column = 1;
+                        line_start = ch;
+                    }
+                    continue;
+                }
+            }
+            else
+            {
+                puts("single tylda not yet implemented");
+                return false;
+            }
+        }
+
         if (*ch == '+')
         {
             it->next = gm_arena_alloc_single(arena, gm_token_t);
