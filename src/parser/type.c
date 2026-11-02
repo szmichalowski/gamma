@@ -48,6 +48,11 @@ bool gm_parse_type(gm_arena_t *arena, const gm_token_t *tokens, gm_type_t *type,
     return true;
 }
 
+bool gm_can_type_mutate(const gm_type_t type)
+{
+    return type.is_mutable;
+}
+
 bool gm_can_type_be_returned_from_a_function(const gm_type_t type)
 {
     return !type.is_mutable;

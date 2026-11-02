@@ -33,6 +33,7 @@ typedef struct gm_type
 
 bool gm_parse_type(gm_arena_t *arena, const gm_token_t *tokens, gm_type_t *type, const gm_token_t **out);
 
+bool gm_can_type_mutate(gm_type_t type);
 bool gm_can_type_be_returned_from_a_function(gm_type_t type);
 
 const char *gm_type_to_string(gm_type_t type);

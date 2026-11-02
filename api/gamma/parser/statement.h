@@ -9,6 +9,7 @@
 typedef enum gm_statement_type
 {
     GM_STATEMENT_TYPE_VAR_DECL,
+    GM_STATEMENT_TYPE_VAR_ASSIGN,
 
     GM_STATEMENT_TYPE_RETURN,
 
@@ -27,13 +28,22 @@ struct gm_statement
         struct
         {
             const gm_token_t *token_name;
-            const gm_token_t *token_type;
             gm_string_t name;
             gm_type_t type;
             gm_expression_node_t *expression;
             bool initialized;
             bool used;
+            bool modified;
         } var_decl;
+
+        // GM_STATEMENT_TYPE_VAR_ASSIGN
+        struct
+        {
+            const gm_statement_t *declaration;
+            const gm_token_t *token_name;
+            gm_string_t name;
+            gm_expression_node_t *expression;
+        } var_assign;
 
         // GM_STATEMENT_TYPE_RETURN
         struct

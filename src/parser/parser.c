@@ -10,7 +10,7 @@
 bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t **out)
 {
     static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 19, "gm_parse_tokens(): token type enum size changed");
-    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_parse_tokens(): statement type enum size changed");
+    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 3, "gm_parse_tokens(): statement type enum size changed");
 
     // gm_arena_alloc_single() zeroes out allocated memory on success, so result-<next is a nullptr
     gm_ast_node_t *result = gm_arena_alloc_single(arena, gm_ast_node_t);

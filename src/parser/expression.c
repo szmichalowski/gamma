@@ -48,7 +48,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
 {
     static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 19, "gm_parse_expression(): token type enum size changed");
     static_assert(GM_EXPRESSION_NODE_TYPE_GUARDIAN_ANGEL == 5, "gm_parse_expression(): expression node type enum size changed");
-    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_parse_expression(): statement type enum size changed");
+    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 3, "gm_parse_expression(): statement type enum size changed");
 
     bool is_negative = false;
     if (tokens->type == GM_TOKEN_TYPE_MINUS)

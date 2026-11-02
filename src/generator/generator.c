@@ -1,4 +1,5 @@
 #include <gamma/generator/generator.h>
+#include <gamma/parser/statement.h>
 #include <gamma/utils/print.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -7,7 +8,7 @@ static bool gm_amd64_generate_fn_body(gm_arena_t *arena, const gm_statement_t *s
 {
     static_assert(GM_AMD64_INSTRUCTION_TYPE_GUARDIAN_ANGEL == 3, "gm_amd64_generate_fn_body(): amd64 instruction type enum size changed");
     static_assert(GM_AMD64_REGISTER_TYPE_GUARDIAN_ANGEL == 6, "gm_amd64_generate_fn_body(): amd64 register type enum size changed");
-    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_amd64_generate_fn_body(): statement type enum size changed");
+    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 3, "gm_amd64_generate_fn_body(): statement type enum size changed");
 
     gm_amd64_instruction_t *instructions_result = gm_arena_alloc_single(arena, gm_amd64_instruction_t);
     gm_amd64_instruction_t *instructions_it = instructions_result;
@@ -17,6 +18,8 @@ static bool gm_amd64_generate_fn_body(gm_arena_t *arena, const gm_statement_t *s
         switch (stmt->type)
         {
         case GM_STATEMENT_TYPE_VAR_DECL:
+            break;
+        case GM_STATEMENT_TYPE_VAR_ASSIGN:
             break;
         case GM_STATEMENT_TYPE_RETURN:
             if (stmt->ret.expression->type != GM_EXPRESSION_NODE_TYPE_LEAF)
