@@ -7,7 +7,7 @@
 
 bool gm_lex_file(gm_arena_t *arena, const char *path, const char *code, const gm_token_t **out)
 {
-    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 18, "gm_lex_file(): token type enum size changed");
+    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 19, "gm_lex_file(): token type enum size changed");
 
     gm_token_t *result = gm_arena_alloc_single(arena, gm_token_t);
     gm_token_t *it = result;
@@ -90,8 +90,19 @@ bool gm_lex_file(gm_arena_t *arena, const char *path, const char *code, const gm
             }
             else
             {
-                puts("single tylda not yet implemented");
-                return false;
+                it->next = gm_arena_alloc_single(arena, gm_token_t);
+                it = it->next;
+                *it = (gm_token_t) {
+                    .type = GM_TOKEN_TYPE_TILDE,
+                    .line = line,
+                    .column = column,
+                    .width = 1,
+                    .source_file = path,
+                    .line_start = line_start
+                };
+                ++column;
+                ++ch;
+                continue;
             }
         }
 
@@ -438,7 +449,7 @@ void gm_print_tokens(const gm_token_t *tokens)
         return;
     }
 
-    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 18, "gm_lex_print(): token type enum size changed");
+    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 19, "gm_lex_print(): token type enum size changed");
     for (const gm_token_t *it = tokens; it != nullptr; it = it->next)
     {
         printf("%zu:%zu: ", it->line, it->column);
@@ -477,6 +488,9 @@ void gm_print_tokens(const gm_token_t *tokens)
             break;
         case GM_TOKEN_TYPE_GRAVE:
             puts("GRAVE/BACKTICK");
+            break;
+        case GM_TOKEN_TYPE_TILDE:
+            puts("TILDE");
             break;
         case GM_TOKEN_TYPE_LEFT_PAREN:
             puts("LEFT PARENTHESIS");

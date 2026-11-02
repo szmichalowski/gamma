@@ -8,7 +8,7 @@
 
 bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_t **statements, const gm_token_t **out)
 {
-    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 18, "gm_parse_fn_body(): token type enum size changed");
+    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 19, "gm_parse_fn_body(): token type enum size changed");
     static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_parse_fn_body(): statement type enum size changed");
 
     if (tokens->type != GM_TOKEN_TYPE_LEFT_CURLY)

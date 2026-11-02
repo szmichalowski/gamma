@@ -46,7 +46,7 @@ static void gm_squish_expression(gm_expression_node_t *expression)
 
 bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_parse_ctx_t *parse_ctx, gm_expression_node_t **expression, const gm_token_t **out)
 {
-    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 18, "gm_parse_expression(): token type enum size changed");
+    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 19, "gm_parse_expression(): token type enum size changed");
     static_assert(GM_EXPRESSION_NODE_TYPE_GUARDIAN_ANGEL == 5, "gm_parse_expression(): expression node type enum size changed");
     static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_parse_expression(): statement type enum size changed");
 

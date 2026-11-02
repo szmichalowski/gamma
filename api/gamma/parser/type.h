@@ -15,6 +15,7 @@ typedef enum gm_type_kind
 typedef struct gm_type
 {
     gm_type_kind_e kind;
+    bool is_mutable;
 } gm_type_t;
 
 /*typedef struct gm_value
@@ -31,6 +32,8 @@ typedef struct gm_type
 } gm_value_t;*/
 
 bool gm_parse_type(gm_arena_t *arena, const gm_token_t *tokens, gm_type_t *type, const gm_token_t **out);
+
+bool gm_can_type_be_returned_from_a_function(gm_type_t type);
 
 const char *gm_type_to_string(gm_type_t type);
 

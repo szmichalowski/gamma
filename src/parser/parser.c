@@ -9,7 +9,7 @@
 
 bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t **out)
 {
-    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 18, "gm_parse_tokens(): token type enum size changed");
+    static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 19, "gm_parse_tokens(): token type enum size changed");
     static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_parse_tokens(): statement type enum size changed");
 
     // gm_arena_alloc_single() zeroes out allocated memory on success, so result-<next is a nullptr
@@ -86,6 +86,12 @@ bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t 
         const gm_token_t *out;
         if (!gm_parse_type(arena, grave->next, &it->fn.return_type, &out))
         {
+            return false;
+        }
+
+        if (!gm_can_type_be_returned_from_a_function(it->fn.return_type))
+        {
+            gm_print_syntax_error_token(arena, it->fn.token_name, "function cannot have the return type of %s", gm_type_to_string(it->fn.return_type));
             return false;
         }
 
