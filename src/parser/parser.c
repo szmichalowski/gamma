@@ -1,5 +1,6 @@
 #include <gamma/lexer/lexer.h>
 #include <gamma/parser/parser.h>
+#include <gamma/parser/type.h>
 #include <gamma/utils/arena.h>
 #include <gamma/utils/print.h>
 #include <inttypes.h>
@@ -9,7 +10,6 @@
 bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t **out)
 {
     static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 18, "gm_parse_tokens(): token type enum size changed");
-    static_assert(GM_TYPE_GUARDIAN_ANGEL == 1, "gm_parse_tokens(): type enum size changed");
     static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 2, "gm_parse_tokens(): statement type enum size changed");
 
     // gm_arena_alloc_single() zeroes out allocated memory on success, so result-<next is a nullptr
@@ -78,25 +78,18 @@ bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t 
             return false;
         }
 
-        const gm_token_t *return_type = grave->next;
-        if (return_type == nullptr)
+        if (grave->next == nullptr)
         {
-            gm_print_syntax_error_token(arena, return_type, "unexpected end of file");
+            gm_print_syntax_error_token(arena, grave, "unexpected end of file");
             return false;
         }
-        if (return_type->type != GM_TOKEN_TYPE_IDENTIFIER)
+        const gm_token_t *out;
+        if (!gm_parse_type(arena, grave->next, &it->fn.return_type, &out))
         {
-            gm_print_syntax_error_token(arena, return_type, "expected identifier");
             return false;
         }
-        if (strcmp(return_type->string.data, "s32") != 0)
-        {
-            gm_print_syntax_error_token(arena, return_type, "invalid type: \"%s\"", return_type->string.data);
-            return false;
-        }
-        it->fn.return_type = GM_TYPE_S32;
 
-        if (!gm_parse_fn_body(arena, return_type->next, &it->fn.statements, &tokens))
+        if (!gm_parse_fn_body(arena, out, &it->fn.statements, &tokens))
         {
             return false;
         }

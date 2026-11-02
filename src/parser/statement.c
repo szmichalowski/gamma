@@ -1,5 +1,6 @@
 #include <gamma/parser/expression.h>
 #include <gamma/parser/statement.h>
+#include <gamma/parser/type.h>
 #include <gamma/utils/print.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -89,38 +90,26 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
                 return false;
             }
 
-            const gm_token_t *type = grave->next;
-            if (type->type != GM_TOKEN_TYPE_IDENTIFIER)
+            const gm_token_t *out;
+            if (!gm_parse_type(arena, grave->next, &statements_it->var_decl.type, &out))
             {
-                gm_print_syntax_error_token(arena, type, "expected identifier");
-                return false;
-            }
-            if (strcmp(type->string.data, "s32") != 0)
-            {
-                gm_print_syntax_error_token(arena, type, "invalid type: \"%s\"", type->string.data);
-                return false;
-            }
-            statements_it->var_decl.type = GM_TYPE_S32;
-            if (type->next == nullptr)
-            {
-                gm_print_syntax_error_token(arena, type, "unexpected end of file");
                 return false;
             }
 
-            if (type->next->type == GM_TOKEN_TYPE_SEMICOLON)
+            if (out->type == GM_TOKEN_TYPE_SEMICOLON)
             {
                 statements_it->var_decl.expression = gm_expression_zero(arena);
                 statements_it->var_decl.initialized = true;
-                tokens = type->next->next;
+                tokens = out->next;
                 if (tokens == nullptr)
                 {
-                    gm_print_syntax_error_token(arena, type->next, "unexpected end of file");
+                    gm_print_syntax_error_token(arena, out, "unexpected end of file");
                     return false;
                 }
                 continue;
             }
 
-            const gm_token_t *equals = type->next;
+            const gm_token_t *equals = out;
             if (equals->type != GM_TOKEN_TYPE_EQUALS)
             {
                 gm_print_syntax_error_token(arena, equals, "unexpected token");

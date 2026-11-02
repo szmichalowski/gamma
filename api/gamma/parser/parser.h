@@ -18,7 +18,7 @@ typedef struct gm_ast_fn
 {
     gm_string_t name;
     const gm_token_t *token_name;
-    gm_type_e return_type;
+    gm_type_t return_type;
 
     gm_statement_t *statements;
     gm_amd64_instruction_t *instructions;

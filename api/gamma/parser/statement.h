@@ -29,7 +29,7 @@ struct gm_statement
             const gm_token_t *token_name;
             const gm_token_t *token_type;
             gm_string_t name;
-            gm_type_e type;
+            gm_type_t type;
             gm_expression_node_t *expression;
             bool initialized;
             bool used;
