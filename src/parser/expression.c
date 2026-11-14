@@ -1,4 +1,5 @@
 #include <gamma/parser/expression.h>
+#include <gamma/parser/parser.h>
 #include <gamma/parser/statement.h>
 #include <gamma/utils/print.h>
 #include <inttypes.h>
@@ -7,9 +8,9 @@
 
 static void gm_squish_expression(gm_expression_node_t *expression)
 {
-    static_assert(GM_EXPRESSION_NODE_TYPE_GUARDIAN_ANGEL == 5, "gm_parse_expression(): expression node type enum size changed");
+    static_assert(GM_EXPRESSION_NODE_TYPE_GUARDIAN_ANGEL == 7, "gm_parse_expression(): expression node type enum size changed");
 
-    if (expression->type == GM_EXPRESSION_NODE_TYPE_LEAF)
+    if (expression->type == GM_EXPRESSION_NODE_TYPE_LEAF_NUM || expression->type == GM_EXPRESSION_NODE_TYPE_LEAF_VAR || expression->type == GM_EXPRESSION_NODE_TYPE_LEAF_FN)
     {
         return;
     }
@@ -17,37 +18,37 @@ static void gm_squish_expression(gm_expression_node_t *expression)
     gm_squish_expression(expression->op.left);
     gm_squish_expression(expression->op.right);
 
-    if (expression->op.left->type == GM_EXPRESSION_NODE_TYPE_LEAF && expression->op.right->type == GM_EXPRESSION_NODE_TYPE_LEAF)
+    if (expression->op.left->type == GM_EXPRESSION_NODE_TYPE_LEAF_NUM && expression->op.right->type == GM_EXPRESSION_NODE_TYPE_LEAF_NUM)
     {
-        const int32_t left = expression->op.left->leaf.number;
-        const int32_t right = expression->op.right->leaf.number;
-        expression->leaf.token_number = nullptr;
+        const int32_t left = expression->op.left->leaf_num.number;
+        const int32_t right = expression->op.right->leaf_num.number;
+        expression->leaf_num.token_number = nullptr;
         switch (expression->type)
         {
         case GM_EXPRESSION_NODE_TYPE_ADDITION:
-            expression->leaf.number = left + right;
+            expression->leaf_num.number = left + right;
             break;
         case GM_EXPRESSION_NODE_TYPE_SUBTRACTION:
-            expression->leaf.number = left - right;
+            expression->leaf_num.number = left - right;
             break;
         case GM_EXPRESSION_NODE_TYPE_MULTIPLICATION:
-            expression->leaf.number = left * right;
+            expression->leaf_num.number = left * right;
             break;
         case GM_EXPRESSION_NODE_TYPE_DIVISION:
-            expression->leaf.number = left / right;
+            expression->leaf_num.number = left / right;
             break;
         default:
             fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
             return;
         }
-        expression->type = GM_EXPRESSION_NODE_TYPE_LEAF;
+        expression->type = GM_EXPRESSION_NODE_TYPE_LEAF_NUM;
     }
 }
 
-bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_parse_ctx_t *parse_ctx, gm_expression_node_t **expression, const gm_token_t **out)
+bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_parse_ctx_t *parse_ctx, gm_expression_node_t **expression, const gm_token_t **out, bool *runtime_dependent)
 {
     static_assert(GM_TOKEN_TYPE_GUARDIAN_ANGEL == 19, "gm_parse_expression(): token type enum size changed");
-    static_assert(GM_EXPRESSION_NODE_TYPE_GUARDIAN_ANGEL == 5, "gm_parse_expression(): expression node type enum size changed");
+    static_assert(GM_EXPRESSION_NODE_TYPE_GUARDIAN_ANGEL == 7, "gm_parse_expression(): expression node type enum size changed");
     static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 3, "gm_parse_expression(): statement type enum size changed");
 
     bool is_negative = false;
@@ -72,7 +73,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
             return false;
         }
 
-        if (!gm_parse_expression(arena, tokens->next, parse_ctx, &root, &tokens))
+        if (!gm_parse_expression(arena, tokens->next, parse_ctx, &root, &tokens, runtime_dependent))
         {
             return false;
         }
@@ -93,8 +94,8 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
             root->parent = new_root;
 
             gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
-            new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF;
-            new_val->leaf.number = -1;
+            new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF_NUM;
+            new_val->leaf_num.number = -1;
             new_root->op.right = new_val;
             new_val->parent = new_root;
 
@@ -104,26 +105,94 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
     else if (tokens->type == GM_TOKEN_TYPE_NUMBER)
     {
         root = gm_arena_alloc_single(arena, gm_expression_node_t);
-        root->type = GM_EXPRESSION_NODE_TYPE_LEAF;
-        root->leaf.token_number = tokens;
-        root->leaf.number = is_negative ? -tokens->number : tokens->number;
+        root->type = GM_EXPRESSION_NODE_TYPE_LEAF_NUM;
+        root->leaf_num.token_number = tokens;
+        root->leaf_num.number = is_negative ? -tokens->number : tokens->number;
         newest = root;
     }
     else if (tokens->type == GM_TOKEN_TYPE_IDENTIFIER)
     {
-        gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->string.data);
-        if (!found)
+        if (tokens->next == nullptr)
         {
-            gm_print_syntax_error_token(arena, tokens, "undeclared identifier");
+            gm_print_syntax_error_token(arena, tokens, "unexpected end of file");
             return false;
         }
-        found->var_decl.used = true;
+        if (tokens->next->type == GM_TOKEN_TYPE_LEFT_PAREN)
+        {
+            if (tokens->next->next == nullptr)
+            {
+                gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
+                return false;
+            }
+            if (tokens->next->next->type != GM_TOKEN_TYPE_RIGHT_PAREN)
+            {
+                gm_print_syntax_error_token(arena, tokens->next->next, "unexpected token");
+                return false;
+            }
 
-        root = gm_arena_alloc_single(arena, gm_expression_node_t);
-        root->type = GM_EXPRESSION_NODE_TYPE_LEAF;
-        root->leaf.token_number = tokens;
-        root->leaf.number = is_negative ? -found->var_decl.expression->leaf.number : found->var_decl.expression->leaf.number;
-        newest = root;
+            root = gm_arena_alloc_single(arena, gm_expression_node_t);
+            root->type = GM_EXPRESSION_NODE_TYPE_LEAF_FN;
+            root->leaf_fn.token_name = tokens;
+            root->leaf_fn.name = tokens->string;
+            tokens = tokens->next->next;
+
+            if (is_negative)
+            {
+                gm_expression_node_t *new_root = gm_arena_alloc_single(arena, gm_expression_node_t);
+                new_root->type = GM_EXPRESSION_NODE_TYPE_MULTIPLICATION;
+                new_root->op.left = root;
+                root->parent = new_root;
+
+                gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
+                new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF_NUM;
+                new_val->leaf_num.number = -1;
+                new_root->op.right = new_val;
+                new_val->parent = new_root;
+                root = new_root;
+            }
+            newest = root;
+            *runtime_dependent = true;
+        }
+        else
+        {
+            gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->string.data);
+            if (!found)
+            {
+                gm_print_syntax_error_token(arena, tokens, "undeclared identifier");
+                return false;
+            }
+            found->var_decl.used = true;
+
+            root = gm_arena_alloc_single(arena, gm_expression_node_t);
+            if (!found->var_decl.runtime_dependent)
+            {
+                root->type = GM_EXPRESSION_NODE_TYPE_LEAF_NUM;
+                root->leaf_num.token_number = nullptr;
+                root->leaf_num.number = is_negative ? -found->var_decl.expression->leaf_num.number : found->var_decl.expression->leaf_num.number;
+            }
+            else
+            {
+                root->type = GM_EXPRESSION_NODE_TYPE_LEAF_VAR;
+                root->leaf_var.var_decl = found;
+
+                if (is_negative)
+                {
+                    gm_expression_node_t *new_root = gm_arena_alloc_single(arena, gm_expression_node_t);
+                    new_root->type = GM_EXPRESSION_NODE_TYPE_MULTIPLICATION;
+                    new_root->op.left = root;
+                    root->parent = new_root;
+
+                    gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
+                    new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF_NUM;
+                    new_val->leaf_num.number = -1;
+                    new_root->op.right = new_val;
+                    new_val->parent = new_root;
+                    root = new_root;
+                }
+            }
+            newest = root;
+            *runtime_dependent = true;
+        }
     }
     else
     {
@@ -164,9 +233,9 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
             if (tokens->next->type == GM_TOKEN_TYPE_NUMBER)
             {
                 gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
-                new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF;
-                new_val->leaf.token_number = tokens->next;
-                new_val->leaf.number = tokens->next->number;
+                new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF_NUM;
+                new_val->leaf_num.token_number = tokens->next;
+                new_val->leaf_num.number = tokens->next->number;
                 new_val->parent = new_root;
                 new_root->op.right = newest = new_val;
 
@@ -179,27 +248,73 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
             }
             else if (tokens->next->type == GM_TOKEN_TYPE_IDENTIFIER)
             {
-                gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->next->string.data);
-                if (!found)
+                tokens = tokens->next;
+                if (tokens->next == nullptr)
                 {
-                    gm_print_syntax_error_token(arena, tokens->next, "undeclared identifier");
+                    gm_print_syntax_error_token(arena, tokens, "unexpected end of file");
                     return false;
                 }
-                found->var_decl.used = true;
-
-                gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
-                new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF;
-                new_val->leaf.token_number = tokens->next;
-                new_val->leaf.number = found->var_decl.expression->leaf.number;
-                new_val->parent = new_root;
-                new_root->op.right = newest = new_val;
-
-                if (tokens->next->next == nullptr)
+                if (tokens->next->type == GM_TOKEN_TYPE_LEFT_PAREN)
                 {
-                    gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
-                    return false;
+                    if (tokens->next->next == nullptr)
+                    {
+                        gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
+                        return false;
+                    }
+                    if (tokens->next->next->type != GM_TOKEN_TYPE_RIGHT_PAREN)
+                    {
+                        gm_print_syntax_error_token(arena, tokens->next->next, "unexpected token");
+                        return false;
+                    }
+
+                    gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
+                    new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF_FN;
+                    new_val->leaf_fn.token_name = tokens;
+                    new_val->leaf_fn.name = tokens->string;
+                    new_val->parent = new_root;
+                    new_root->op.right = newest = new_val;
+                    tokens = tokens->next->next;
+
+                    if (tokens->next == nullptr)
+                    {
+                        gm_print_syntax_error_token(arena, tokens, "unexpected end of file");
+                        return false;
+                    }
+                    tokens = tokens->next;
+                    *runtime_dependent = true;
                 }
-                tokens = tokens->next->next;
+                else
+                {
+                    gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->string.data);
+                    if (!found)
+                    {
+                        gm_print_syntax_error_token(arena, tokens, "undeclared identifier");
+                        return false;
+                    }
+                    found->var_decl.used = true;
+
+                    gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
+                    if (!found->var_decl.runtime_dependent)
+                    {
+                        new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF_NUM;
+                        new_val->leaf_num.token_number = nullptr;
+                        new_val->leaf_num.number = found->var_decl.expression->leaf_num.number;
+                    }
+                    else
+                    {
+                        new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF_VAR;
+                        new_val->leaf_var.var_decl = found;
+                        *runtime_dependent = true;
+                    }
+                    new_val->parent = new_root;
+                    new_root->op.right = newest = new_val;
+                    if (tokens->next == nullptr)
+                    {
+                        gm_print_syntax_error_token(arena, tokens, "unexpected end of file");
+                        return false;
+                    }
+                    tokens = tokens->next;
+                }
             }
             else
             {
@@ -208,7 +323,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
                     gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
                     return false;
                 }
-                if (!gm_parse_expression(arena, tokens->next->next, parse_ctx, &new_root->op.right, &tokens))
+                if (!gm_parse_expression(arena, tokens->next->next, parse_ctx, &new_root->op.right, &tokens, runtime_dependent))
                 {
                     return false;
                 }
@@ -246,9 +361,9 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
             if (tokens->next->type == GM_TOKEN_TYPE_NUMBER)
             {
                 gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
-                new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF;
-                new_val->leaf.token_number = tokens->next;
-                new_val->leaf.number = tokens->next->number;
+                new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF_NUM;
+                new_val->leaf_num.token_number = tokens->next;
+                new_val->leaf_num.number = tokens->next->number;
                 ptr->op.right = new_val;
                 new_val->parent = ptr;
                 newest = new_val;
@@ -262,28 +377,75 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
             }
             else if (tokens->next->type == GM_TOKEN_TYPE_IDENTIFIER)
             {
-                gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->next->string.data);
-                if (!found)
+                tokens = tokens->next;
+                if (tokens->next == nullptr)
                 {
-                    gm_print_syntax_error_token(arena, tokens->next, "undeclared identifier");
+                    gm_print_syntax_error_token(arena, tokens, "unexpected end of file");
                     return false;
                 }
-                found->var_decl.used = true;
-
-                gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
-                new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF;
-                new_val->leaf.token_number = tokens->next;
-                new_val->leaf.number = found->var_decl.expression->leaf.number;
-                ptr->op.right = new_val;
-                new_val->parent = ptr;
-                newest = new_val;
-
-                if (tokens->next->next == nullptr)
+                if (tokens->next->type == GM_TOKEN_TYPE_LEFT_PAREN)
                 {
-                    gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
-                    return false;
+                    if (tokens->next->next == nullptr)
+                    {
+                        gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
+                        return false;
+                    }
+                    if (tokens->next->next->type != GM_TOKEN_TYPE_RIGHT_PAREN)
+                    {
+                        gm_print_syntax_error_token(arena, tokens->next->next, "unexpected token");
+                        return false;
+                    }
+
+                    gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
+                    new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF_FN;
+                    new_val->leaf_fn.token_name = tokens;
+                    new_val->leaf_fn.name = tokens->string;
+                    ptr->op.right = new_val;
+                    new_val->parent = ptr;
+                    newest = new_val;
+                    tokens = tokens->next->next;
+
+                    if (tokens->next == nullptr)
+                    {
+                        gm_print_syntax_error_token(arena, tokens, "unexpected end of file");
+                        return false;
+                    }
+                    tokens = tokens->next;
+                    *runtime_dependent = true;
                 }
-                tokens = tokens->next->next;
+                else
+                {
+                    gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->string.data);
+                    if (!found)
+                    {
+                        gm_print_syntax_error_token(arena, tokens, "undeclared identifier");
+                        return false;
+                    }
+                    found->var_decl.used = true;
+
+                    gm_expression_node_t *new_val = gm_arena_alloc_single(arena, gm_expression_node_t);
+                    if (!found->var_decl.runtime_dependent)
+                    {
+                        new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF_NUM;
+                        new_val->leaf_num.token_number = nullptr;
+                        new_val->leaf_num.number = found->var_decl.expression->leaf_num.number;
+                    }
+                    else
+                    {
+                        new_val->type = GM_EXPRESSION_NODE_TYPE_LEAF_VAR;
+                        new_val->leaf_var.var_decl = found;
+                        *runtime_dependent = true;
+                    }
+                    ptr->op.right = new_val;
+                    new_val->parent = ptr;
+                    newest = new_val;
+                    if (tokens->next == nullptr)
+                    {
+                        gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
+                        return false;
+                    }
+                    tokens = tokens->next;
+                }
             }
             else
             {
@@ -292,7 +454,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
                     gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
                     return false;
                 }
-                if (!gm_parse_expression(arena, tokens->next->next, parse_ctx, &ptr->op.right, &tokens))
+                if (!gm_parse_expression(arena, tokens->next->next, parse_ctx, &ptr->op.right, &tokens, runtime_dependent))
                 {
                     return false;
                 }
@@ -321,27 +483,81 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
     return true;
 }
 
+bool gm_ensure_expression_integrity(gm_arena_t *arena, const gm_expression_node_t *expression, const gm_ast_node_t *ast_tree)
+{
+    static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_ensure_expression_integrity(): AST node type enum size changed");
+    static_assert(GM_EXPRESSION_NODE_TYPE_GUARDIAN_ANGEL == 7, "gm_ensure_expression_integrity(): expression node type enum size changed");
+
+    switch (expression->type)
+    {
+    case GM_EXPRESSION_NODE_TYPE_LEAF_NUM:
+    case GM_EXPRESSION_NODE_TYPE_LEAF_VAR:
+        return true;
+    case GM_EXPRESSION_NODE_TYPE_LEAF_FN:
+        for (const gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
+        {
+            switch (it->type)
+            {
+            case GM_AST_NODE_TYPE_FN:
+                if (strcmp(expression->leaf_fn.name.data, it->fn.name.data) == 0)
+                {
+                    return true;
+                }
+                break;
+            default:
+                fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
+                return false;
+            }
+        }
+        gm_print_syntax_error_token(arena, expression->leaf_fn.token_name, "undeclared function name");
+        return false;
+    case GM_EXPRESSION_NODE_TYPE_ADDITION:
+    case GM_EXPRESSION_NODE_TYPE_SUBTRACTION:
+    case GM_EXPRESSION_NODE_TYPE_MULTIPLICATION:
+    case GM_EXPRESSION_NODE_TYPE_DIVISION:
+        const bool ret1 = gm_ensure_expression_integrity(arena, expression->op.left, ast_tree);
+        return ret1 && gm_ensure_expression_integrity(arena, expression->op.right, ast_tree);
+    default:
+        fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
+        return false;
+    }
+}
+
 gm_expression_node_t *gm_expression_zero(gm_arena_t *arena)
 {
     gm_expression_node_t *zero = gm_arena_alloc_single(arena, gm_expression_node_t);
-    zero->type = GM_EXPRESSION_NODE_TYPE_LEAF;
-    zero->leaf.token_number = nullptr;
-    zero->leaf.number = 0;
+    zero->type = GM_EXPRESSION_NODE_TYPE_LEAF_NUM;
+    zero->leaf_num.token_number = nullptr;
+    zero->leaf_num.number = 0;
     return zero;
 }
 
 void gm_print_expression(const gm_expression_node_t *expression, const size_t pad)
 {
-    static_assert(GM_EXPRESSION_NODE_TYPE_GUARDIAN_ANGEL == 5, "gm_parse_expression(): expression node type enum size changed");
+    static_assert(GM_EXPRESSION_NODE_TYPE_GUARDIAN_ANGEL == 7, "gm_parse_expression(): expression node type enum size changed");
 
     switch (expression->type)
     {
-    case GM_EXPRESSION_NODE_TYPE_LEAF:
+    case GM_EXPRESSION_NODE_TYPE_LEAF_NUM:
         for (size_t i = 0; i < pad; ++i)
         {
             putchar(' ');
         }
-        printf("%" PRId32 "\n", expression->leaf.number);
+        printf("%" PRId32 "\n", expression->leaf_num.number);
+        break;
+    case GM_EXPRESSION_NODE_TYPE_LEAF_VAR:
+        for (size_t i = 0; i < pad; ++i)
+        {
+            putchar(' ');
+        }
+        puts(expression->leaf_var.var_decl->var_decl.name.data);
+        break;
+    case GM_EXPRESSION_NODE_TYPE_LEAF_FN:
+        for (size_t i = 0; i < pad; ++i)
+        {
+            putchar(' ');
+        }
+        printf("%s()\n", expression->leaf_fn.name.data);
         break;
     case GM_EXPRESSION_NODE_TYPE_ADDITION:
         gm_print_expression(expression->op.right, pad + 4);

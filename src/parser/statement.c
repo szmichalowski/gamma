@@ -1,5 +1,6 @@
 #include <gamma/lexer/lexer.h>
 #include <gamma/parser/expression.h>
+#include <gamma/parser/parser.h>
 #include <gamma/parser/statement.h>
 #include <gamma/parser/type.h>
 #include <gamma/utils/print.h>
@@ -44,7 +45,8 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
                 return false;
             }
 
-            if (!gm_parse_expression(arena, tokens->next, &ctx, &statements_it->ret.expression, &tokens))
+            bool ignore;
+            if (!gm_parse_expression(arena, tokens->next, &ctx, &statements_it->ret.expression, &tokens, &ignore))
             {
                 return false;
             }
@@ -150,7 +152,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
                 }
 
                 const gm_token_t *semicolon;
-                if (!gm_parse_expression(arena, equals->next, &ctx, &statements_it->var_decl.expression, &semicolon))
+                if (!gm_parse_expression(arena, equals->next, &ctx, &statements_it->var_decl.expression, &semicolon, &statements_it->var_decl.runtime_dependent))
                 {
                     return false;
                 }
@@ -192,7 +194,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
                 }
 
                 const gm_token_t *semicolon;
-                if (!gm_parse_expression(arena, equals->next, &ctx, &statements_it->var_assign.expression, &semicolon))
+                if (!gm_parse_expression(arena, equals->next, &ctx, &statements_it->var_assign.expression, &semicolon, &found->var_decl.runtime_dependent))
                 {
                     return false;
                 }
@@ -232,9 +234,10 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
     return true;
 }
 
-bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const gm_statement_t *statements)
+bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const gm_statement_t *statements, const gm_ast_node_t *ast_tree)
 {
-    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 3, "gm_print_statements(): statement type enum size changed");
+    static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 3, "gm_ensure_fn_integrity(): statement type enum size changed");
+    static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_ensure_fn_integrity(): AST node type enum size changed");
 
     bool returned = false;
 
@@ -259,6 +262,10 @@ bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const
                 gm_print_syntax_error_token(arena, it->var_decl.token_name, "variable declared mutable, but never mutated");
                 return false;
             }
+            if (!gm_ensure_expression_integrity(arena, it->var_decl.expression, ast_tree))
+            {
+                return false;
+            }
             break;
         case GM_STATEMENT_TYPE_VAR_ASSIGN:
             if (!gm_can_type_mutate(it->var_assign.declaration->var_decl.type))
@@ -266,8 +273,16 @@ bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const
                 gm_print_syntax_error_token(arena, it->var_assign.token_name, "assigning to variable not declared mutable");
                 return false;
             }
+            if (!gm_ensure_expression_integrity(arena, it->var_assign.expression, ast_tree))
+            {
+                return false;
+            }
             break;
         case GM_STATEMENT_TYPE_RETURN:
+            if (!gm_ensure_expression_integrity(arena, it->ret.expression, ast_tree))
+            {
+                return false;
+            }
             returned = true;
             break;
         default:
