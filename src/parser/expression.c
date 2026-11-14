@@ -483,7 +483,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
     return true;
 }
 
-bool gm_ensure_expression_integrity(gm_arena_t *arena, const gm_expression_node_t *expression, const gm_ast_node_t *ast_tree)
+bool gm_ensure_expression_integrity(gm_arena_t *arena, const gm_expression_node_t *expression, gm_ast_node_t *ast_tree)
 {
     static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_ensure_expression_integrity(): AST node type enum size changed");
     static_assert(GM_EXPRESSION_NODE_TYPE_GUARDIAN_ANGEL == 7, "gm_ensure_expression_integrity(): expression node type enum size changed");
@@ -494,13 +494,14 @@ bool gm_ensure_expression_integrity(gm_arena_t *arena, const gm_expression_node_
     case GM_EXPRESSION_NODE_TYPE_LEAF_VAR:
         return true;
     case GM_EXPRESSION_NODE_TYPE_LEAF_FN:
-        for (const gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
+        for (gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
         {
             switch (it->type)
             {
             case GM_AST_NODE_TYPE_FN:
                 if (strcmp(expression->leaf_fn.name.data, it->fn.name.data) == 0)
                 {
+                    it->fn.used = true;
                     return true;
                 }
                 break;

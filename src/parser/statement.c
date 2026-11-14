@@ -234,7 +234,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
     return true;
 }
 
-bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const gm_statement_t *statements, const gm_ast_node_t *ast_tree)
+bool gm_ensure_fn_integrity(gm_arena_t *arena, const gm_token_t *fn_token, const gm_statement_t *statements, gm_ast_node_t *ast_tree)
 {
     static_assert(GM_STATEMENT_TYPE_GUARDIAN_ANGEL == 3, "gm_ensure_fn_integrity(): statement type enum size changed");
     static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_ensure_fn_integrity(): AST node type enum size changed");

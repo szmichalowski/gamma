@@ -66,7 +66,7 @@ typedef struct gm_fn_parse_ctx gm_fn_parse_ctx_t;
 bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_parse_ctx_t *parse_ctx, gm_expression_node_t **expression, const gm_token_t **out, bool *runtime_dependent);
 
 typedef struct gm_ast_node gm_ast_node_t;
-bool gm_ensure_expression_integrity(gm_arena_t *arena, const gm_expression_node_t *expression, const gm_ast_node_t *ast_tree);
+bool gm_ensure_expression_integrity(gm_arena_t *arena, const gm_expression_node_t *expression, gm_ast_node_t *ast_tree);
 
 gm_expression_node_t *gm_expression_zero(gm_arena_t *arena);
 

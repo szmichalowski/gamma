@@ -2,7 +2,7 @@ fn main() `s32
 {
     x `s32 = a();
     y `s32 = b();
-    return x + y + x();
+    return x + y;
 }
 
 fn a() `s32
@@ -14,3 +14,10 @@ fn b() `s32
 {
     return 3;
 }
+
+~~~
+fn c() `s32
+{
+    return 4;
+}
+~~~

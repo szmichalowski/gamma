@@ -119,7 +119,7 @@ static bool gm_ensure_fn_unique_names(gm_arena_t *arena, const gm_ast_node_t *as
             {
                 if (&it2->fn != fn && strcmp(it2->fn.name.data, fn->name.data) == 0)
                 {
-                    gm_print_syntax_error_token(arena, it2->fn.token_name, "function with the name \"%s\" has already been declared", it2->fn.name.data);
+                    gm_print_syntax_error_token(arena, it2->fn.token_name, "function with this name has already been declared");
                     return false;
                 }
             }
@@ -133,7 +133,31 @@ static bool gm_ensure_fn_unique_names(gm_arena_t *arena, const gm_ast_node_t *as
     return true;
 }
 
-bool gm_ensure_ast_integrity(gm_arena_t *arena, const gm_ast_node_t *ast_tree)
+static bool gm_ensure_fn_used(gm_arena_t *arena, const gm_ast_node_t *ast_tree)
+{
+    static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_ensure_fn_used(): AST node type enum size changed");
+
+    for (const gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
+    {
+        switch (it->type)
+        {
+        case GM_AST_NODE_TYPE_FN:
+            if (strcmp(it->fn.name.data, "main") != 0 && !it->fn.used)
+            {
+                gm_print_syntax_error_token(arena, it->fn.token_name, "function declared, but not used");
+                return false;
+            }
+            break;
+        default:
+            fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool gm_ensure_ast_integrity(gm_arena_t *arena, gm_ast_node_t *ast_tree)
 {
     static_assert(GM_AST_NODE_TYPE_GUARDIAN_ANGEL == 1, "gm_print_ast_tree(): AST node type enum size changed");
 
@@ -144,7 +168,7 @@ bool gm_ensure_ast_integrity(gm_arena_t *arena, const gm_ast_node_t *ast_tree)
 
     bool res = true;
 
-    for (const gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
+    for (gm_ast_node_t *it = ast_tree; it != nullptr; it = it->next)
     {
         switch (it->type)
         {
@@ -159,6 +183,16 @@ bool gm_ensure_ast_integrity(gm_arena_t *arena, const gm_ast_node_t *ast_tree)
             fprintf(stderr, "ERROR: UNREACHABLE CODE: %s:%d\n", __FILE__, __LINE__);
             return false;
         }
+    }
+
+    if (!res)
+    {
+        return false;
+    }
+
+    if (!gm_ensure_fn_used(arena, ast_tree))
+    {
+        return false;
     }
 
     return res;

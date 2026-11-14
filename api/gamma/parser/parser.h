@@ -19,6 +19,7 @@ typedef struct gm_ast_fn
     gm_string_t name;
     const gm_token_t *token_name;
     gm_type_t return_type;
+    bool used;
 
     gm_statement_t *statements;
     gm_amd64_instruction_t *instructions;
@@ -41,7 +42,7 @@ struct gm_ast_node
 
 bool gm_parse_tokens(gm_arena_t *arena, const gm_token_t *tokens, gm_ast_node_t **out);
 
-bool gm_ensure_ast_integrity(gm_arena_t *arena, const gm_ast_node_t *ast_tree);
+bool gm_ensure_ast_integrity(gm_arena_t *arena, gm_ast_node_t *ast_tree);
 
 void gm_print_ast_tree(const gm_ast_node_t *ast_tree);
 
