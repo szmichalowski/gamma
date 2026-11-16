@@ -44,6 +44,7 @@ struct gm_statement
             const gm_token_t *token_name;
             gm_string_t name;
             gm_expression_node_t *expression;
+            bool runtime_dependent;
         } var_assign;
 
         // GM_STATEMENT_TYPE_RETURN
@@ -67,11 +68,17 @@ typedef struct gm_fn_parse_ctx
     gm_statement_t **var_decls;
     size_t var_decls_size;
     size_t var_decls_cap;
+    gm_statement_t **var_assigns;
+    size_t var_assigns_size;
+    size_t var_assigns_cap;
 } gm_fn_parse_ctx_t;
 
 gm_fn_parse_ctx_t gm_fn_parse_ctx_new(gm_arena_t *arena);
 
 void gm_fn_parse_ctx_add_var_decl(gm_arena_t *arena, gm_fn_parse_ctx_t *ctx, gm_statement_t *decl);
 gm_statement_t *gm_fn_parse_ctx_find_var_decl(gm_fn_parse_ctx_t *ctx, const char *var_name);
+
+void gm_fn_parse_ctx_add_var_assign(gm_arena_t *arena, gm_fn_parse_ctx_t *ctx, gm_statement_t *decl);
+gm_statement_t *gm_fn_parse_ctx_find_var_assign(gm_fn_parse_ctx_t *ctx, const char *var_name);
 
 #endif // API_PARSER_STATEMENT_H

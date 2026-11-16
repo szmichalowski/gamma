@@ -10,8 +10,18 @@ static void gm_squish_expression(gm_expression_node_t *expression)
 {
     static_assert(GM_EXPRESSION_NODE_TYPE_GUARDIAN_ANGEL == 7, "gm_parse_expression(): expression node type enum size changed");
 
-    if (expression->type == GM_EXPRESSION_NODE_TYPE_LEAF_NUM || expression->type == GM_EXPRESSION_NODE_TYPE_LEAF_VAR || expression->type == GM_EXPRESSION_NODE_TYPE_LEAF_FN)
+    if (expression->type == GM_EXPRESSION_NODE_TYPE_LEAF_NUM || expression->type == GM_EXPRESSION_NODE_TYPE_LEAF_FN)
     {
+        return;
+    }
+
+    if (expression->type == GM_EXPRESSION_NODE_TYPE_LEAF_VAR)
+    {
+        if (expression->leaf_var.var_decl->var_decl.expression->type == GM_EXPRESSION_NODE_TYPE_LEAF_NUM)
+        {
+            expression->type = GM_EXPRESSION_NODE_TYPE_LEAF_NUM;
+            expression->leaf_num.number = expression->leaf_var.var_decl->var_decl.expression->leaf_num.number;
+        }
         return;
     }
 
@@ -158,8 +168,12 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
             gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->string.data);
             if (!found)
             {
-                gm_print_syntax_error_token(arena, tokens, "undeclared identifier");
-                return false;
+                found = gm_fn_parse_ctx_find_var_assign(parse_ctx, tokens->string.data);
+                if (!found)
+                {
+                    gm_print_syntax_error_token(arena, tokens, "undeclared identifier");
+                    return false;
+                }
             }
             found->var_decl.used = true;
 
@@ -288,8 +302,12 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
                     gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->string.data);
                     if (!found)
                     {
-                        gm_print_syntax_error_token(arena, tokens, "undeclared identifier");
-                        return false;
+                        found = gm_fn_parse_ctx_find_var_assign(parse_ctx, tokens->string.data);
+                        if (!found)
+                        {
+                            gm_print_syntax_error_token(arena, tokens, "undeclared identifier");
+                            return false;
+                        }
                     }
                     found->var_decl.used = true;
 
@@ -418,8 +436,12 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
                     gm_statement_t *found = gm_fn_parse_ctx_find_var_decl(parse_ctx, tokens->string.data);
                     if (!found)
                     {
-                        gm_print_syntax_error_token(arena, tokens, "undeclared identifier");
-                        return false;
+                        found = gm_fn_parse_ctx_find_var_assign(parse_ctx, tokens->string.data);
+                        if (!found)
+                        {
+                            gm_print_syntax_error_token(arena, tokens, "undeclared identifier");
+                            return false;
+                        }
                     }
                     found->var_decl.used = true;
 
@@ -441,7 +463,7 @@ bool gm_parse_expression(gm_arena_t *arena, const gm_token_t *tokens, gm_fn_pars
                     newest = new_val;
                     if (tokens->next == nullptr)
                     {
-                        gm_print_syntax_error_token(arena, tokens->next, "unexpected end of file");
+                        gm_print_syntax_error_token(arena, tokens, "unexpected end of file");
                         return false;
                     }
                     tokens = tokens->next;

@@ -194,7 +194,7 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
                 }
 
                 const gm_token_t *semicolon;
-                if (!gm_parse_expression(arena, equals->next, &ctx, &statements_it->var_assign.expression, &semicolon, &found->var_decl.runtime_dependent))
+                if (!gm_parse_expression(arena, equals->next, &ctx, &statements_it->var_assign.expression, &semicolon, &statements_it->var_assign.runtime_dependent))
                 {
                     return false;
                 }
@@ -210,6 +210,8 @@ bool gm_parse_fn_body(gm_arena_t *arena, const gm_token_t *tokens, gm_statement_
                     gm_print_syntax_error_token(arena, semicolon, "unexpected end of file");
                     return false;
                 }
+
+                gm_fn_parse_ctx_add_var_assign(arena, &ctx, statements_it);
             }
             else
             {
@@ -314,7 +316,7 @@ void gm_print_statements(const gm_statement_t *statements)
         switch (it->type)
         {
         case GM_STATEMENT_TYPE_VAR_DECL:
-            printf("\tVARIABLE DECLARATION \"%s\" of type \"%s\" ", it->var_decl.name.data, gm_type_to_string(it->var_decl.type));
+            printf("\tVARIABLE DECLARATION \"%s\" of type \"%s\" %s ", it->var_decl.name.data, gm_type_to_string(it->var_decl.type), it->var_decl.runtime_dependent ? "RD" : "NON-RD");
             if (it->var_decl.initialized)
             {
                 puts("initialized with expression:");
@@ -326,7 +328,7 @@ void gm_print_statements(const gm_statement_t *statements)
             }
             break;
         case GM_STATEMENT_TYPE_VAR_ASSIGN:
-            printf("\tVARIABLE ASSIGNMENT \"%s\" with expression:\n", it->var_assign.name.data);
+            printf("\tVARIABLE ASSIGNMENT \"%s\" %s with expression:\n", it->var_assign.name.data, it->var_assign.runtime_dependent ? "RD" : "NON-RD");
             gm_print_expression(it->var_assign.expression, 10);
             break;
         case GM_STATEMENT_TYPE_RETURN:
@@ -345,7 +347,10 @@ gm_fn_parse_ctx_t gm_fn_parse_ctx_new(gm_arena_t *arena)
     return (gm_fn_parse_ctx_t) {
         .var_decls = gm_arena_alloc_array(arena, gm_statement_t *, 16),
         .var_decls_size = 0,
-        .var_decls_cap = 16
+        .var_decls_cap = 16,
+        .var_assigns = gm_arena_alloc_array(arena, gm_statement_t *, 16),
+        .var_assigns_size = 0,
+        .var_assigns_cap = 16
     };
 }
 
@@ -364,6 +369,28 @@ gm_statement_t *gm_fn_parse_ctx_find_var_decl(gm_fn_parse_ctx_t *ctx, const char
     for (gm_statement_t **i = ctx->var_decls; i < ctx->var_decls + ctx->var_decls_size; ++i)
     {
         if (strcmp(var_name, (*i)->var_decl.name.data) == 0)
+        {
+            return *i;
+        }
+    }
+    return nullptr;
+}
+
+void gm_fn_parse_ctx_add_var_assign(gm_arena_t *arena, gm_fn_parse_ctx_t *ctx, gm_statement_t *decl)
+{
+    if (ctx->var_assigns_size >= ctx->var_assigns_cap)
+    {
+        ctx->var_assigns = gm_arena_realloc_array(arena, gm_statement_t *, ctx->var_assigns, ctx->var_assigns_cap, ctx->var_assigns_cap * 3);
+        ctx->var_assigns_cap *= 3;
+    }
+    ctx->var_assigns[ctx->var_assigns_size++] = decl;
+}
+
+gm_statement_t *gm_fn_parse_ctx_find_var_assign(gm_fn_parse_ctx_t *ctx, const char *var_name)
+{
+    for (gm_statement_t **i = ctx->var_assigns + ctx->var_assigns_size - 1; i >= ctx->var_assigns; --i)
+    {
+        if (strcmp(var_name, (*i)->var_assign.name.data) == 0)
         {
             return *i;
         }

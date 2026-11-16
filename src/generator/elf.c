@@ -151,14 +151,15 @@ void gm_amd64_generate_section_header64_symbol_table(gm_section_header64_t *head
     header->entry_size = sizeof(gm_symbol_table64_entry_t);
 }
 
-static constexpr size_t gm_preamble_size = 14;
+static constexpr size_t gm_preamble_size = 16;
 static constexpr uint8_t gm_preamble[gm_preamble_size] = {
-    0xE8, 0x09, 0x00, 0x00, 0x00, // call 0x400009 <main>
+    0x31, 0xED, // xor ebp, ebp
+    0xE8, 0x09, 0x00, 0x00, 0x00, // call 0x000009 <main>
     0x89, 0xC7, // mov edi, eax
     0xB8, 0x3C, 0x00, 0x00, 0x00, // mov eax, 60
-    0x0f, 0x05 // syscall
+    0x0F, 0x05 // syscall
 };
-static constexpr size_t gm_preamble_call_main_offset = 1;
+static constexpr size_t gm_preamble_call_main_offset = 3;
 static constexpr size_t gm_preamble_after_call_size = 9;
 
 void gm_amd64_generate_symbol_table64(gm_symbol_table64_entry_t *table, const gm_ast_node_t *ast_tree)
