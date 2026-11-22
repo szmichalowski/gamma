@@ -38,13 +38,13 @@ target_compile_options(gamma PRIVATE -Wall -Wextra)
 add_executable(gamma2)
 target_sources(gamma2
     PRIVATE
-        src2/main.cpp
-
-        src2/lexer/lexer.cpp
+        src2/lexer/error.cpp
+        src2/lexer/lex.cpp
+        src2/lexer/token.cpp
 
         src2/utils/arena.cpp
-        src2/utils/string.cpp
-        src2/utils/print.cpp
+
+        src2/main.cpp
 )
 
 target_include_directories(gamma2 PRIVATE api2)

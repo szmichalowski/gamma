@@ -28,8 +28,8 @@ namespace
 
 static_assert(sizeof(void *) == 8, "Multi-gigbyte arena requires 64-bit architecture");
 
-static_assert((gamma::utils::ARENA_COMMIT_CHUNK & (gamma::utils::ARENA_COMMIT_CHUNK - 1)) == 0, "ARENA_COMMIT_CHUNK must be a power of 2");
-static_assert(gamma::utils::ARENA_CAPACITY % gamma::utils::ARENA_COMMIT_CHUNK == 0, "ARENA_CAPACITY must be divisible by ARENA_COMMIT_CHUNK");
+static_assert((gm::utils::ARENA_COMMIT_CHUNK & (gm::utils::ARENA_COMMIT_CHUNK - 1)) == 0, "ARENA_COMMIT_CHUNK must be a power of 2");
+static_assert(gm::utils::ARENA_CAPACITY % gm::utils::ARENA_COMMIT_CHUNK == 0, "ARENA_CAPACITY must be divisible by ARENA_COMMIT_CHUNK");
 static_assert(std::atomic<std::uintptr_t>::is_always_lock_free);
 static_assert(std::atomic<std::size_t>::is_always_lock_free);
 
@@ -79,7 +79,7 @@ inline std::uintptr_t init_arena() noexcept
     std::uintptr_t expected { UNINIT };
     if (base_addr.compare_exchange_strong(expected, INIT_IN_PROGRESS, std::memory_order_acq_rel, std::memory_order_acquire))
     {
-        void *mem { ::reserve_memory(gamma::utils::ARENA_CAPACITY) };
+        void *mem { ::reserve_memory(gm::utils::ARENA_CAPACITY) };
         const std::uintptr_t addr { mem ? reinterpret_cast<std::uintptr_t>(mem) : INIT_FAILED };
         base_addr.store(addr, std::memory_order_release);
         return addr;
@@ -109,7 +109,7 @@ inline bool ensure_committed(std::uintptr_t base, std::size_t needed) noexcept
     const std::size_t cur_comm { committed.load(std::memory_order_relaxed) };
     if (needed > cur_comm)
     {
-        const std::size_t target { (needed + gamma::utils::ARENA_COMMIT_CHUNK - 1) & ~(gamma::utils::ARENA_COMMIT_CHUNK - 1) };
+        const std::size_t target { (needed + gm::utils::ARENA_COMMIT_CHUNK - 1) & ~(gm::utils::ARENA_COMMIT_CHUNK - 1) };
         const std::size_t delta { target - cur_comm };
         ok = ::commit_memory(reinterpret_cast<void *>(base + cur_comm), delta);
         if (ok)
@@ -150,7 +150,7 @@ inline void *allocate(std::size_t size, std::size_t align) noexcept
         const std::uintptr_t aligned_addr { (cur_addr + (align - 1)) & ~(align - 1) };
         const std::size_t padding { aligned_addr - cur_addr };
 
-        if (aligned_addr < cur_addr || size > gamma::utils::ARENA_CAPACITY || cur > gamma::utils::ARENA_CAPACITY - size || padding > (gamma::utils::ARENA_CAPACITY - size - cur))
+        if (aligned_addr < cur_addr || size > gm::utils::ARENA_CAPACITY || cur > gm::utils::ARENA_CAPACITY - size || padding > (gm::utils::ARENA_CAPACITY - size - cur))
         {
             return nullptr;
         }
@@ -175,7 +175,7 @@ inline bool owns(const void *ptr) noexcept
         return false;
     }
     const auto addr { reinterpret_cast<std::uintptr_t>(ptr) };
-    return addr >= base && addr < base + gamma::utils::ARENA_CAPACITY;
+    return addr >= base && addr < base + gm::utils::ARENA_CAPACITY;
 }
 
 void *alloc_impl(std::size_t size, std::size_t align, bool aligned_overload)
@@ -185,7 +185,7 @@ void *alloc_impl(std::size_t size, std::size_t align, bool aligned_overload)
         return p;
     }
 
-    if constexpr (!gamma::utils::ARENA_FALLBACK_TO_HEAP)
+    if constexpr (!gm::utils::ARENA_FALLBACK_TO_HEAP)
     {
         throw std::bad_alloc {};
     }
@@ -223,7 +223,7 @@ void *alloc_impl(std::size_t size, std::size_t align, bool aligned_overload)
 
 void free_impl(void *ptr, bool aligned_overload) noexcept
 {
-    if constexpr (!gamma::utils::ARENA_FALLBACK_TO_HEAP)
+    if constexpr (!gm::utils::ARENA_FALLBACK_TO_HEAP)
     {
         return;
     }
@@ -283,7 +283,7 @@ void operator delete(void *ptr, std::size_t, std::align_val_t) noexcept
 inline std::size_t used() noexcept { return offset.load(std::memory_order_relaxed); }
 inline std::size_t committed_bytes() noexcept { return committed.load(std::memory_order_acquire); }
 
-namespace gamma::utils
+namespace gm::utils
 {
 
 std::size_t arena_used() noexcept

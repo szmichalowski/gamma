@@ -1,38 +1,52 @@
-#include <gamma/utils/arena.hpp>
-#include <map>
+#include <fstream>
+#include <gamma/lexer/lex.hpp>
+#include <iostream>
 #include <print>
-#include <thread>
-#include <vector>
 
-std::map<std::string, std::string> before_main = {
-    { "klucz_globalny_przekraczajacy_limit_SSO", "wartosc_zainicjalizowana_przed_main" }
-};
-
-int main()
+int main(int argc, const char **argv)
 {
-    std::println("Przed main() zużyto {}B, zatwierdzono {}MB/{}GB", gamma::utils::arena_used(), gamma::utils::arena_committed_bytes() / (1024z * 1024z), gamma::utils::ARENA_CAPACITY / (1024z * 1024z * 1024z));
-
-    std::vector<std::thread> threads;
-    for (int t = 0; t < 4; ++t)
+    if (argc != 2)
     {
-        threads.emplace_back([t]()
-            {
-                std::map<std::string, std::vector<int>> local;
-                for (int i = 0; i < 2000; ++i)
-                {
-                    std::string k = "watek_" + std::to_string(t) + "_klucz_bez_SSO_" + std::to_string(i);
-                    local[k] = std::vector<int>(512, i);
-                } });
+        std::println(stderr, "Usage: {} <source_file.gm>", argv[0]);
+        return -1;
     }
 
-    for (auto &th : threads)
+    std::ifstream src_file { argv[1], std::ios::binary | std::ios::ate };
+    if (!src_file)
     {
-        th.join();
+        std::println(stderr, "ERROR: failed to open {}; did you provide the proper path?", argv[1]);
+        return -1;
     }
 
-    std::println("Po pracy wątków: zużyto {:.2f}MB, zatwierdzono {}MB",
-        static_cast<double>(gamma::utils::arena_used()) / (1024.0 * 1024.0),
-        gamma::utils::arena_committed_bytes() / (1024 * 1024));
+    const auto end_pos = src_file.tellg();
+    if (end_pos < 0)
+    {
+        std::println(stderr, "ERROR: failed to get size of {}", argv[1]);
+        return -1;
+    }
+
+    const std::streamsize stream_size { end_pos };
+    src_file.seekg(0, std::ios::beg);
+
+    std::string file_content(stream_size, 0);
+    if (!src_file.read(file_content.data(), stream_size))
+    {
+        std::println(stderr, "ERROR: failed to read {}", argv[1]);
+        return -1;
+    }
+
+    try
+    {
+        const auto tokens { gm::lexer::lex(file_content, argv[1]) };
+        for (const auto &token : tokens)
+        {
+            std::println("{}", token);
+        }
+    }
+    catch (const gm::lexer::lexer_error &e)
+    {
+        return -1;
+    }
 
     return 0;
 }

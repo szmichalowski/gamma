@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-namespace gamma::utils
+namespace gm::utils
 {
 
 inline constexpr std::size_t ARENA_CAPACITY { 4z * 1024z * 1024z * 1024z }; // 4GB
